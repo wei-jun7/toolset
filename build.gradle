@@ -1,0 +1,22 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+plugins {
+    id 'com.android.application' version '8.0.2' apply false
+    id 'com.android.library' version '8.0.2' apply false
+}
+dependencies {
+    configurations.all {
+        resolutionStrategy {
+            // 指定 Kotlin 标准库的版本
+            eachDependency { DependencyResolveDetails details ->
+                if (details.requested.group == 'org.jetbrains.kotlin' && details.requested.name == 'kotlin-stdlib') {
+                    details.useVersion '1.8.20' // 或者你希望使用的版本
+                }
+            }
+            implementation 'com.squareup.okhttp3:okhttp:4.9.1'
+            implementation 'com.google.code.gson:gson:2.8.8'
+        }
+    }
+
+
+
+}
