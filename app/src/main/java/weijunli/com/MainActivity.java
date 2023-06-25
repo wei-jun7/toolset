@@ -16,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import weijunli.com.databinding.ActivityMainBinding;
 
+
 public class MainActivity extends AppCompatActivity {
 
     private AppBarConfiguration mAppBarConfiguration;
