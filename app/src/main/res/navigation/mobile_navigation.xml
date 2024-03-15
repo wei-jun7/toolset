@@ -8,7 +8,7 @@
     <fragment
         android:id="@+id/nav_home"
         android:name="weijunli.com.ui.home.HomeFragment"
-        android:label="@string/menu_home"
+        android:label="汇率转化器"
         tools:layout="@layout/fragment_home" />
 
     <fragment
@@ -20,7 +20,7 @@
     <fragment
         android:id="@+id/nav_slideshow"
         android:name="weijunli.com.ui.slideshow.SlideshowFragment"
-        android:label="@string/menu_slideshow"
+        android:label="spam detector"
         tools:layout="@layout/fragment_slideshow" />
     <fragment
         android:id="@+id/tip_calculator"

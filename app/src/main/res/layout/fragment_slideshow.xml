@@ -7,16 +7,92 @@
     tools:context=".ui.slideshow.SlideshowFragment">
 
     <TextView
-        android:id="@+id/text_slideshow"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="8dp"
-        android:textAlignment="center"
-        android:textSize="20sp"
+        android:id="@+id/editTextText"
+        android:layout_width="212dp"
+        android:layout_height="44dp"
+        android:ems="10"
+        android:inputType="text"
+        android:text="请输入你想输入的信息在下面"
+        app:layout_constraintBottom_toTopOf="@+id/message"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.145"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <EditText
+        android:id="@+id/message"
+        android:layout_width="260dp"
+        android:layout_height="58dp"
+        android:hint="message here"
+        android:inputType="textLongMessage"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.357"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.147"
+        tools:ignore="HardcodedText" />
+
+    <Button
+        android:id="@+id/button2"
+        android:layout_width="299dp"
+        android:layout_height="98dp"
+        android:layout_marginBottom="111dp"
+        android:text="发送"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@+id/final_result"
+        app:layout_constraintVertical_bias="1.0" />
+
+    <TextView
+        android:id="@+id/final_result"
+        android:layout_width="301dp"
+        android:layout_height="124dp"
+        android:text="Final result："
+        android:textSize="10dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.49"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/remove_message"
+        app:layout_constraintVertical_bias="0.04"
+        tools:ignore="MissingConstraints" />
+
+    <TextView
+        android:id="@+id/remove_message"
+        android:layout_width="292dp"
+        android:layout_height="110dp"
+        android:text="Remove_message:"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.47"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.339" />
+
+    <Button
+        android:id="@+id/button3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="login"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.512"
+        app:layout_constraintStart_toEndOf="@+id/editTextText"
+        tools:ignore="MissingConstraints"
+        tools:layout_editor_absoluteY="23dp" />
+
+    <TextView
+        android:id="@+id/Amount"
+        android:layout_width="307dp"
+        android:layout_height="25dp"
+        android:layout_marginTop="24dp"
+        android:text="Amount: 0.00"
+        app:layout_constraintBottom_toTopOf="@+id/button2"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/final_result"
+        app:layout_constraintVertical_bias="0.111" />
+
+
 </androidx.constraintlayout.widget.ConstraintLayout>
