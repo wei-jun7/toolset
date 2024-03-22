@@ -110,10 +110,10 @@ public class SlideshowFragment extends Fragment {
                             credentials, gasProvider);
                     String message ="hello";
                     TransactionReceipt transactionReceipt = contract.setInputData(message).send();
-                    sourceinfo.setText("Transaction complete: " + transactionReceipt.getTransactionHash());
+                    remove_message.setText("Transaction complete: " + transactionReceipt.getTransactionHash());
                     wait(3);
                     String output = contract.outputData().send();
-                    sourceinfo.setText("Ouput value: " + output);
+                    remove_message.setText("Ouput value: " + output);
 
 
 
