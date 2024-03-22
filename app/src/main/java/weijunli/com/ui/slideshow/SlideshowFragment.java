@@ -1,7 +1,8 @@
 package weijunli.com.ui.slideshow;
 import android.widget.Toast;
 import android.content.Context;
-import android.os.Bundle;
+import weijunli.com.solcontract.weijunli.com.solcontract.*;
+
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -56,7 +57,6 @@ import okhttp3.Response;
 import weijunli.com.databinding.FragmentHomeBinding;
 import weijunli.com.ui.home.HomeViewModel;
 
-
 public class SlideshowFragment extends Fragment {
 
     private FragmentSlideshowBinding binding;
@@ -74,7 +74,7 @@ public class SlideshowFragment extends Fragment {
     private String[] blacklist;
     private Web3j web3;
     private static final String PRIVATE_KEY = "b86b4e07800868d04de104582677760fcbffe8461e6481968c3b60ef802620a1";
-    private static final String CONTRACT_ADDRESS = "0x7Bc71b20e7355Eb5605b61E25Ec5aac63613E414";
+    private static final String CONTRACT_ADDRESS = "0xb25046E85417E11Ab1491FB3f1356f9884Ce272C";
     private static final BigInteger GAS_PRICE = BigInteger.valueOf(20_000_000_000L);
     private static final BigInteger GAS_LIMIT = BigInteger.valueOf(4_300_000);
 
@@ -106,6 +106,16 @@ public class SlideshowFragment extends Fragment {
                     // 加载智能合约
                     Credentials credentials = Credentials.create(PRIVATE_KEY);
                     ContractGasProvider gasProvider = new StaticGasProvider(GAS_PRICE, GAS_LIMIT);
+                    SpamDectetor_sol_AIContract contract = SpamDectetor_sol_AIContract.load(CONTRACT_ADDRESS, web3,
+                            credentials, gasProvider);
+                    String message ="hello";
+                    TransactionReceipt transactionReceipt = contract.setInputData(message).send();
+                    sourceinfo.setText("Transaction complete: " + transactionReceipt.getTransactionHash());
+                    wait(3);
+                    String output = contract.outputData().send();
+                    sourceinfo.setText("Ouput value: " + output);
+
+
 
 //                    SimpleStorage simpleStorage = SimpleStorage.load(CONTRACT_ADDRESS, web3j, credentials, gasProvider);
 //
@@ -117,10 +127,11 @@ public class SlideshowFragment extends Fragment {
 //                    BigInteger value = simpleStorage.get().send();
 //                    System.out.println("Stored value: " + value);
 
-                    showDialog(new String[] {"test on the smart contract"}, "test");
+                    showDialog(new String[] {output}, "test");
                 }
                 catch (Exception e) {
                     e.printStackTrace();
+                    showDialog(new String[] {"error"}, "test");
                 }
             }
         });
