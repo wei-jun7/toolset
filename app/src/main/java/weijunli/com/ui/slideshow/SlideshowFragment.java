@@ -1,4 +1,5 @@
 package weijunli.com.ui.slideshow;
+import android.util.Log;
 import android.widget.Toast;
 import android.content.Context;
 import weijunli.com.solcontract.weijunli.com.solcontract.*;
@@ -7,6 +8,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
+import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import androidx.annotation.NonNull;
@@ -73,12 +76,14 @@ public class SlideshowFragment extends Fragment {
     private String[] whitelist;
     private String[] blacklist;
     private Web3j web3;
-    private static final String PRIVATE_KEY = "b86b4e07800868d04de104582677760fcbffe8461e6481968c3b60ef802620a1";
-    private static final String CONTRACT_ADDRESS = "0xb25046E85417E11Ab1491FB3f1356f9884Ce272C";
+    private static final String PRIVATE_KEY = "2fef86803ccff8a535c98b5540239d48eade281bcbdff051b8f6d6dd16226a6c";
+    private static final String CONTRACT_ADDRESS = "0xde4f7367f524c1bB6dc41BC740cc470e3900E121";
     private static final BigInteger GAS_PRICE = BigInteger.valueOf(20_000_000_000L);
     private static final BigInteger GAS_LIMIT = BigInteger.valueOf(4_300_000);
 
-
+//address；https://sepolia.infura.io/v3/93c82ee662ce4f11b02edb3a42087f4a
+    //key;XbV6HwxCYy+RbH/A/866+5/Z10IF9rUo+crvaKx55YeHKbKcEP4TpQ  0x7247662eA1658a7bEBb29Ea701076A6cfaC8cA36
+    //contract addresss；0xde4f7367f524c1bB6dc41BC740cc470e3900E121
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
@@ -89,50 +94,54 @@ public class SlideshowFragment extends Fragment {
         View root = binding.getRoot();
         Amount = binding.Amount;
         Final_result= binding.finalResult;
-        message = binding.message3;
-        sourceinfo = binding.message2;
+        message = binding.message2;
+        sourceinfo = binding.message3;
         remove_message= binding.removeMessage;
         login_state =false;
         money1 = 100.00;
         whitelist = new String[]{"user1", "user2"};
         blacklist = new String[]{"user3", "user4"};
-
+        System.out.print("get into initial");
         binding.button6.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                try{
-                    web3 = Web3j.build(new HttpService("https://sepolia.infura.io/v3/29be0acae77c4f56af14e72df9b99dc1"));
+                // 使用后台线程来处理网络请求
+                Executors.newSingleThreadExecutor().submit(() -> {
+                    try {
+                        Log.d("Web3", "Starting Web3 interaction");
+                        Web3j web3 = Web3j.build(new HttpService("https://sepolia.infura.io/v3/93c82ee662ce4f11b02edb3a42087f4a"));
 
-                    // 加载智能合约
-                    Credentials credentials = Credentials.create(PRIVATE_KEY);
-                    ContractGasProvider gasProvider = new StaticGasProvider(GAS_PRICE, GAS_LIMIT);
-                    SpamDectetor_sol_AIContract contract = SpamDectetor_sol_AIContract.load(CONTRACT_ADDRESS, web3,
-                            credentials, gasProvider);
-                    String message ="hello";
-                    TransactionReceipt transactionReceipt = contract.setInputData(message).send();
-                    remove_message.setText("Transaction complete: " + transactionReceipt.getTransactionHash());
-                    wait(3);
-                    String output = contract.outputData().send();
-                    remove_message.setText("Ouput value: " + output);
+                        // 加载智能合约
+                        Credentials credentials = Credentials.create(PRIVATE_KEY);
+                        ContractGasProvider gasProvider = new StaticGasProvider(GAS_PRICE, GAS_LIMIT);
+                        SpamDectetor_sol_AIContract contract = SpamDectetor_sol_AIContract.load(CONTRACT_ADDRESS, web3, credentials, gasProvider);
 
+                        // 发送交易和获取结果
+                        Log.d("Web3", "sending hello to contract ");
+                        TransactionReceipt transactionReceipt = contract.setInputData("hello").send();
+                        Log.d("Web3", "sended hello to contract ");
+                        Log.d("Web3", "getting hello to contract ");
+                        String Input = contract.getInputData().send();
+                        Log.d("Web3", "get hello to contract ");
+                        // 回到主线程更新UI
+                        getActivity().runOnUiThread(() -> {
+                            Log.d("Web3", "Attempting to update UI");
+                            if (getActivity() == null) {
+                                Log.e("Web3", "getActivity() returned null");
+                            } else if (remove_message == null) {
+                                Log.e("Web3", "remove_message is null");
+                            } else {
+                                Log.d("Web3", "Updating remove_message TextView");
+                                remove_message.setText(String.format("Transaction complete: %s\nOutput value: %s", transactionReceipt.getTransactionHash(), Input));
+                            }
+                        });
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        Log.d("Web3", "get error for  textlive ");
+                        getActivity().runOnUiThread(() -> showDialog(new String[]{"error"}, "Transaction Error"));
+                    }
+                });
 
-
-//                    SimpleStorage simpleStorage = SimpleStorage.load(CONTRACT_ADDRESS, web3j, credentials, gasProvider);
-//
-//                    // 调用合约方法：设置值
-//                    TransactionReceipt transactionReceipt = simpleStorage.set(BigInteger.valueOf(123)).send();
-//                    System.out.println("Transaction complete: " + transactionReceipt.getTransactionHash());
-//
-//                    // 调用合约方法：获取值
-//                    BigInteger value = simpleStorage.get().send();
-//                    System.out.println("Stored value: " + value);
-
-                    showDialog(new String[] {output}, "test");
-                }
-                catch (Exception e) {
-                    e.printStackTrace();
-                    showDialog(new String[] {"error"}, "test");
-                }
             }
         });
         binding.button4.setOnClickListener(new View.OnClickListener() {

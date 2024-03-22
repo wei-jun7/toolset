@@ -17,7 +17,7 @@ dependencies {
             implementation 'org.pytorch:pytorch_android:1.9.0'
             implementation 'org.pytorch:pytorch_android_torchvision:1.9.0'
             implementation 'org.web3j:core:4.8.7' // 请检查最新版本
-
+            implementation 'org.slf4j:slf4j-simple:1.7.30'
         }
     }
 
