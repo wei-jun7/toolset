@@ -159,10 +159,11 @@ public class SlideshowFragment extends Fragment {
         binding.button2.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(!login_state){
+                if(!login_state) {
                     showErrorMessage("please login ");
+
                 }
-                if (message.getText().length() > 0 && login_state) {
+                else if (message.getText().length() > 0 && login_state) {
                     StringBuilder extractedInfo = new StringBuilder("Extracted Info:");
                     String cleanMessage = message.getText().toString();
 
