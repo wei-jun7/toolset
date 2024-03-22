@@ -1,6 +1,5 @@
 package weijunli.com.ui.slideshow;
 import android.widget.Toast;
-
 import android.content.Context;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -12,8 +11,14 @@ import java.util.regex.Pattern;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import org.web3j.protocol.Web3j;
+import org.web3j.protocol.http.HttpService;
+import org.web3j.tx.gas.ContractGasProvider;
+import org.web3j.tx.gas.StaticGasProvider;
+import org.web3j.crypto.Credentials;
+import org.web3j.protocol.core.methods.response.TransactionReceipt;
+import java.math.BigInteger;
 import android.widget.CompoundButton;
-
 import weijunli.com.R;
 import weijunli.com.databinding.FragmentSlideshowBinding;
 import android.annotation.SuppressLint;
@@ -59,11 +64,19 @@ public class SlideshowFragment extends Fragment {
     private TextView Final_result;
     private TextView message;
     private TextView remove_message;
+    private TextView sourceinfo;
     private boolean login_state;
     private static final String username1 = "1234567890";
     private static final String  password1= "1234567890";
     private  TextView Amount;
-    private double money;
+    private double money1;
+    private String[] whitelist;
+    private String[] blacklist;
+    private Web3j web3;
+    private static final String PRIVATE_KEY = "b86b4e07800868d04de104582677760fcbffe8461e6481968c3b60ef802620a1";
+    private static final String CONTRACT_ADDRESS = "0x7Bc71b20e7355Eb5605b61E25Ec5aac63613E414";
+    private static final BigInteger GAS_PRICE = BigInteger.valueOf(20_000_000_000L);
+    private static final BigInteger GAS_LIMIT = BigInteger.valueOf(4_300_000);
 
 
 
@@ -75,13 +88,55 @@ public class SlideshowFragment extends Fragment {
         binding = FragmentSlideshowBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
         Amount = binding.Amount;
-        TextView Final_result= binding.finalResult;
-        TextView message = binding.message;
-        TextView remove_message= binding.removeMessage;
+        Final_result= binding.finalResult;
+        message = binding.message3;
+        sourceinfo = binding.message2;
+        remove_message= binding.removeMessage;
         login_state =false;
-        money = 100.00;
+        money1 = 100.00;
+        whitelist = new String[]{"user1", "user2"};
+        blacklist = new String[]{"user3", "user4"};
 
+        binding.button6.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                try{
+                    web3 = Web3j.build(new HttpService("https://sepolia.infura.io/v3/29be0acae77c4f56af14e72df9b99dc1"));
 
+                    // 加载智能合约
+                    Credentials credentials = Credentials.create(PRIVATE_KEY);
+                    ContractGasProvider gasProvider = new StaticGasProvider(GAS_PRICE, GAS_LIMIT);
+
+//                    SimpleStorage simpleStorage = SimpleStorage.load(CONTRACT_ADDRESS, web3j, credentials, gasProvider);
+//
+//                    // 调用合约方法：设置值
+//                    TransactionReceipt transactionReceipt = simpleStorage.set(BigInteger.valueOf(123)).send();
+//                    System.out.println("Transaction complete: " + transactionReceipt.getTransactionHash());
+//
+//                    // 调用合约方法：获取值
+//                    BigInteger value = simpleStorage.get().send();
+//                    System.out.println("Stored value: " + value);
+
+                    showDialog(new String[] {"test on the smart contract"}, "test");
+                }
+                catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+        binding.button4.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                showDialog(whitelist, "whitelist");
+            }
+        });
+
+        binding.button5.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                showDialog(blacklist,"Blacklist");
+            }
+        });
 
         binding.button3.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -93,6 +148,9 @@ public class SlideshowFragment extends Fragment {
         binding.button2.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if(!login_state){
+                    showErrorMessage("please login ");
+                }
                 if (message.getText().length() > 0 && login_state) {
                     StringBuilder extractedInfo = new StringBuilder("Extracted Info:");
                     String cleanMessage = message.getText().toString();
@@ -144,9 +202,11 @@ public class SlideshowFragment extends Fragment {
                     Final_result.setText("Final Message:\n" + cleanMessage);
                     // 显示提取的信息
                     remove_message.setText(extractedInfo.toString());
+                    money1 -= 1;
+                    Amount.setText("Amount:"+money1);
 
                 } else {
-                    showErrorMessage("请输入message");
+                    showErrorMessage("please enter message or login ");
                 }
             }
         });
@@ -155,13 +215,30 @@ public class SlideshowFragment extends Fragment {
         return root;
     }
 
+    private void showDialog(String[] list, String name) {
+        // 假设这是你的白名单条目数组
+        // 使用StringBuilder来构建显示内容
+        StringBuilder whitelistStringBuilder = new StringBuilder();
+        for (String item : list) {
+            whitelistStringBuilder.append(item).append("\n");
+        }
+
+        // 创建并显示AlertDialog
+        new AlertDialog.Builder(getContext())
+                .setTitle(name)
+                .setMessage(whitelistStringBuilder.toString())
+                .setPositiveButton("确定", null)
+                .create()
+                .show();
+    }
+
 
 
     private void showErrorMessage(String message) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-        builder.setTitle("错误");
+        builder.setTitle("Error");
         builder.setMessage(message);
-        builder.setPositiveButton("确定", new DialogInterface.OnClickListener() {
+        builder.setPositiveButton("ok", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 dialog.dismiss();
@@ -191,11 +268,11 @@ public class SlideshowFragment extends Fragment {
                             // 使用equals方法比较字符串
                             if (username1.equals(inputUsername) && password1.equals(inputPassword)) {
                                 login_state = true;
-                                Toast.makeText(getActivity(), "登录成功", Toast.LENGTH_SHORT).show();
-                                Amount.setText("Amount:"+money);
+                                Toast.makeText(getActivity(), "login successful", Toast.LENGTH_SHORT).show();
+                                Amount.setText("Amount:"+money1);
                             } else {
                                 login_state = false;
-                                showErrorMessage("用户名或密码错误");
+                                showErrorMessage("User password or the username error");
                             }
                         }
                     })

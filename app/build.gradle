@@ -1,12 +1,15 @@
+// apply plugin应该在文件顶部
 plugins {
     id 'com.android.application'
 }
 
 android {
+    // namespace 和其他配置保持不变
     namespace 'weijunli.com'
     compileSdk 33
 
     defaultConfig {
+        // defaultConfig设置保持不变
         applicationId "weijunli.com"
         minSdk 24
         targetSdk 33
@@ -16,22 +19,29 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // buildTypes设置保持不变
     buildTypes {
         release {
+            // release设置保持不变
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
+    // compileOptions设置保持不变
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
+    // buildFeatures设置保持不变
     buildFeatures {
         viewBinding true
     }
 }
 
 dependencies {
+    // 其他依赖保持不变
     implementation 'com.squareup.okhttp3:okhttp:4.9.1'
     implementation 'com.google.android.material:material:1.4.0'
     implementation 'com.google.code.gson:gson:2.8.8'
@@ -45,15 +55,21 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
-    configurations.all {
-        resolutionStrategy {
-            // 指定 Kotlin 标准库的版本
-            eachDependency { DependencyResolveDetails details ->
-                if (details.requested.group == 'org.jetbrains.kotlin' && details.requested.name == 'kotlin-stdlib') {
-                    details.useVersion '1.6.21' // 或者你希望使用的版本
-                }
+
+    // 添加Web3j依赖
+    implementation 'org.web3j:core:4.8.7'
+}
+
+
+
+// resolutionStrategy设置应该在这里
+configurations.all {
+    resolutionStrategy {
+        // 指定 Kotlin 标准库的版本，如果你使用Kotlin
+        eachDependency { DependencyResolveDetails details ->
+            if (details.requested.group == 'org.jetbrains.kotlin' && details.requested.name == 'kotlin-stdlib') {
+                details.useVersion '1.6.21' // 或者你希望使用的版本
             }
         }
     }
-
 }
