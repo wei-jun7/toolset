@@ -16,6 +16,8 @@ import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import org.web3j.protocol.Web3j;
+import org.web3j.protocol.core.DefaultBlockParameterName;
+import org.web3j.protocol.core.methods.response.EthGetTransactionCount;
 import org.web3j.protocol.http.HttpService;
 import org.web3j.tx.gas.ContractGasProvider;
 import org.web3j.tx.gas.StaticGasProvider;
@@ -102,48 +104,56 @@ public class SlideshowFragment extends Fragment {
         whitelist = new String[]{"user1", "user2"};
         blacklist = new String[]{"user3", "user4"};
         System.out.print("get into initial");
-        binding.button6.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                // 使用后台线程来处理网络请求
-                Executors.newSingleThreadExecutor().submit(() -> {
-                    try {
-                        Log.d("Web3", "Starting Web3 interaction");
-                        Web3j web3 = Web3j.build(new HttpService("https://sepolia.infura.io/v3/93c82ee662ce4f11b02edb3a42087f4a"));
 
-                        // 加载智能合约
-                        Credentials credentials = Credentials.create(PRIVATE_KEY);
-                        ContractGasProvider gasProvider = new StaticGasProvider(GAS_PRICE, GAS_LIMIT);
-                        SpamDectetor_sol_AIContract contract = SpamDectetor_sol_AIContract.load(CONTRACT_ADDRESS, web3, credentials, gasProvider);
+        binding.button6.setOnClickListener(view -> {
+            // 使用后台线程来处理网络请求
+            Executors.newSingleThreadExecutor().submit(() -> {
+                try {
+                    Log.d("Web3", "Starting Web3 interaction");
+                    Web3j web3 = Web3j.build(new HttpService("https://sepolia.infura.io/v3/93c82ee662ce4f11b02edb3a42087f4a"));
+                    Credentials credentials = Credentials.create(PRIVATE_KEY);
+                    // 获取nonce
+                    EthGetTransactionCount ethGetTransactionCount = web3.ethGetTransactionCount(
+                            credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
+                    BigInteger nonce = ethGetTransactionCount.getTransactionCount();
+                    Log.d("Web3", "Current nonce: " + nonce);
 
-                        // 发送交易和获取结果
-                        Log.d("Web3", "sending hello to contract ");
-                        TransactionReceipt transactionReceipt = contract.setInputData("hello").send();
-                        Log.d("Web3", "sended hello to contract ");
-                        Log.d("Web3", "getting hello to contract ");
-                        String Input = contract.getInputData().send();
-                        Log.d("Web3", "get hello to contract ");
-                        // 回到主线程更新UI
-                        getActivity().runOnUiThread(() -> {
-                            Log.d("Web3", "Attempting to update UI");
-                            if (getActivity() == null) {
-                                Log.e("Web3", "getActivity() returned null");
-                            } else if (remove_message == null) {
-                                Log.e("Web3", "remove_message is null");
-                            } else {
-                                Log.d("Web3", "Updating remove_message TextView");
-                                remove_message.setText(String.format("Transaction complete: %s\nOutput value: %s", transactionReceipt.getTransactionHash(), Input));
-                            }
-                        });
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        Log.d("Web3", "get error for  textlive ");
-                        getActivity().runOnUiThread(() -> showDialog(new String[]{"error"}, "Transaction Error"));
-                    }
-                });
+                    ContractGasProvider gasProvider = new StaticGasProvider(GAS_PRICE, GAS_LIMIT);
+                    SpamDectetor_sol_AIContract contract = SpamDectetor_sol_AIContract.load(CONTRACT_ADDRESS, web3, credentials, gasProvider);
 
-            }
+                    // 发送数据到智能合约
+                    Log.d("Web3", "sending hello to contract");
+                    TransactionReceipt transactionReceipt = contract.setInputData("hello").send();
+                    Log.d("Web3", "sented hello to contract");
+                    String transactionHash = transactionReceipt.getTransactionHash();
+                    // 回到主线程更新UI
+                    getActivity().runOnUiThread(() -> {
+                        updateUI(transactionHash, "input data 1");
+                    });
+                    EthGetTransactionCount ethGetTransactionCount1 = web3.ethGetTransactionCount(
+                            credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
+                    BigInteger nonce1 = ethGetTransactionCount.getTransactionCount();
+                    Log.d("Web3", "Current nonce: " + nonce1);
+                    // 获取智能合约中的数据
+                    Log.d("Web3", "retrieving data from contract");
+                    String input = contract.getInputData().send();
+                    Log.d("Web3", "retrieved data from contract: " + input);
+                    EthGetTransactionCount ethGetTransactionCount2 = web3.ethGetTransactionCount(
+                            credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
+                    BigInteger nonce2 = ethGetTransactionCount.getTransactionCount();
+                    Log.d("Web3", "Current nonce: " + nonce2);
+                    // 回到主线程更新UI
+                    getActivity().runOnUiThread(() -> {
+                        updateUI(transactionHash, "input data 2: " + input);
+                    });
+                } catch (Exception e) {
+                    Log.e("Web3", "Error during Web3 interaction", e);
+                    getActivity().runOnUiThread(() -> showErrorDialog());
+                }
+            });
         });
+
+
         binding.button4.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -252,7 +262,25 @@ public class SlideshowFragment extends Fragment {
                 .create()
                 .show();
     }
+    private void updateUI(String transactionHash, String inputData) {
+        getActivity().runOnUiThread(() -> {
+            if (remove_message != null) {
+                String message = String.format("Transaction complete: %s\nInput value: %s", transactionHash, inputData);
+                remove_message.setText(message);
+                Log.d("Web3", "UI updated with new data");
+            } else {
+                Log.e("Web3", "remove_message is null, cannot update UI");
+            }
+        });
+    }
 
+    private void showErrorDialog() {
+        getActivity().runOnUiThread(() -> {
+            // Assuming showDialog is a method that shows an error dialog
+            showDialog(new String[]{"error"}, "Transaction Error");
+            Log.d("Web3", "Error dialog shown");
+        });
+    }
 
 
     private void showErrorMessage(String message) {
