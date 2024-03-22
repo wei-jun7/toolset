@@ -134,6 +134,8 @@ public class SlideshowFragment extends Fragment {
                             credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
                     BigInteger nonce1 = ethGetTransactionCount.getTransactionCount();
                     Log.d("Web3", "Current nonce: " + nonce1);
+
+
                     // 获取智能合约中的数据
                     Log.d("Web3", "retrieving data from contract");
                     String input = contract.getInputData().send();
