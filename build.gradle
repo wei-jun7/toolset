@@ -3,6 +3,7 @@ plugins {
     id 'com.android.application' version '8.0.2' apply false
     id 'com.android.library' version '8.0.2' apply false
 }
+
 dependencies {
     configurations.all {
         resolutionStrategy {
@@ -18,6 +19,11 @@ dependencies {
             implementation 'org.pytorch:pytorch_android_torchvision:1.9.0'
             implementation 'org.web3j:core:4.8.7' // 请检查最新版本
             implementation 'org.slf4j:slf4j-simple:1.7.30'
+            implementation 'io.metamask.androidsdk:metamask-android-sdk:0.2.1'
+            classpath 'com.google.dagger:hilt-android-gradle-plugin:2.40.5'
+            implementation 'com.google.dagger:hilt-android:2.40.5'
+            kapt 'com.google.dagger:hilt-compiler:2.40.5'
+            classpath 'com.google.dagger:hilt-android-gradle-plugin:2.38.1'
         }
     }
 
