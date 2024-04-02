@@ -2,6 +2,7 @@ package weijunli.com.ui.slideshow;
 
 import android.content.DialogInterface;
 import android.os.Bundle;
+import android.text.InputType;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -41,6 +42,7 @@ public class SlideshowFragment extends Fragment {
     private TextView remove_message;
     private TextView sourceinfo;
     private boolean login_state;
+
     private static final String username1 = "1234567890";
     private static final String  password1= "1234567890";
     private  TextView Amount;
@@ -74,7 +76,12 @@ public class SlideshowFragment extends Fragment {
         whitelist = new String[]{"user1", "user2"};
         blacklist = new String[]{"user3", "user4"};
         System.out.print("get into initial");
-
+        binding.sendmoney.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showInputDialog("user");
+            }
+        });
         binding.button6.setOnClickListener(view -> {
             // 使用后台线程来处理网络请求
             Executors.newSingleThreadExecutor().submit(() -> {
@@ -312,6 +319,34 @@ public class SlideshowFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         binding = null;
+    }
+    private void showInputDialog(String name) {
+        // 创建一个EditText用于输入金额
+        final EditText inputAmount = new EditText(getContext());
+        inputAmount.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL); // 设置输入类型为数字，支持小数
+
+        // 创建AlertDialog并设置标题、正文（EditText）和按钮
+        new AlertDialog.Builder(getContext())
+                .setTitle(name)
+                .setMessage("please input the value you send ：")
+                .setView(inputAmount) // 将EditText设置为对话框内容
+                .setPositiveButton("send", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String amount = inputAmount.getText().toString();
+                        // 处理用户输入的金额，例如发送金额
+                        sendAmount(amount);
+                    }
+                })
+                .setNegativeButton("cancel", null) // 点击取消按钮，对话框消失，不做任何处理
+                .create()
+                .show();
+    }
+
+    private void sendAmount(String amount) {
+        // 这里是处理发送金额的逻辑
+        // 例如，可以打印出来或发送到服务器
+        Log.d("Amount", "Sending amount: " + amount);
     }
 
 }
