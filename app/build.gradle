@@ -7,13 +7,14 @@ plugins {
 android {
     // namespace 和其他配置保持不变
     namespace 'weijunli.com'
-    compileSdk 33
+    compileSdk 34
 
     defaultConfig {
         // defaultConfig设置保持不变
         applicationId "weijunli.com"
         minSdk 24
-        targetSdk 33
+
+        targetSdkVersion 34 // 根据需要更新
         versionCode 1
         versionName "1.0"
 
