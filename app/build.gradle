@@ -9,6 +9,7 @@ android {
     namespace 'weijunli.com'
     compileSdk 34
 
+
     defaultConfig {
         // defaultConfig设置保持不变
         applicationId "weijunli.com"
@@ -57,7 +58,12 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
-    implementation 'org.slf4j:slf4j-simple:1.7.30'
+    implementation 'org.slf4j:slf4j-simple:1.7.30'// TensorFlow Lite依赖
+    implementation 'org.tensorflow:tensorflow-lite:2.4.0'
+    // 如果你需要使用GPU加速
+    implementation 'org.tensorflow:tensorflow-lite-gpu:2.4.0'
+    implementation 'org.pytorch:pytorch_android_lite:2.1.0'
+
     // 添加Web3j依赖
     implementation 'org.web3j:core:4.8.7'
     implementation 'io.metamask.androidsdk:metamask-android-sdk:0.5.2'
