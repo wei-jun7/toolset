@@ -61,6 +61,8 @@ public class SlideshowFragment extends Fragment {
     private String[] blacklist;
     private Web3j web3;
     private static final String PRIVATE_KEY = "2fef86803ccff8a535c98b5540239d48eade281bcbdff051b8f6d6dd16226a6c";
+    private static final String PRIVATE_KEY_BL = "393bd1213bc36f917e9619f4cd4d7b3c39e97e4c0bdb9cfc21115007b8587b78";
+    private static final String BLACKLIST_ADDRESS = "0xa686E985F79AeBc52835B9098092C378594b227D";
     private static final String CONTRACT_ADDRESS = "0xde4f7367f524c1bB6dc41BC740cc470e3900E121";
     private static final BigInteger GAS_PRICE = BigInteger.valueOf(20_000_000_000L);
     private static final BigInteger GAS_LIMIT = BigInteger.valueOf(4_300_000);
