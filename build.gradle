@@ -14,6 +14,10 @@ dependencies {
                     details.useVersion '1.8.20' // 或者你希望使用的版本
                 }
             }
+            // TensorFlow Lite依赖
+            implementation 'org.tensorflow:tensorflow-lite:2.4.0'
+            implementation 'com.squareup.okhttp3:okhttp:4.9.0'
+
             classpath 'com.android.tools.build:gradle:8.1.0'
             implementation 'com.squareup.okhttp3:okhttp:4.9.1'
             implementation 'com.google.code.gson:gson:2.8.8'
