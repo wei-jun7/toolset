@@ -29,6 +29,7 @@ import java.math.BigInteger;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import weijunli.com.solcontract.weijunli.com.solcontract.Blacklist_sol_EmailBlacklistVoting;
 
 import weijunli.com.R;
 import weijunli.com.databinding.FragmentSlideshowBinding;
