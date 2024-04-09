@@ -13,11 +13,7 @@ contract EmailBlacklistVoting {
     uint256 public constant VOTING_DURATION = 3 days;
     mapping(bytes32 => uint256) public voteEndTime;
 
-    event EmailBlacklisted(bytes32 indexed emailHash, bool status);
-    event EmailContentAdded(bytes32 indexed emailHash, string ipfsHash);
-    event VoteInitiated(bytes32 indexed emailHash, uint256 endTime);
-    event VoteCasted(bytes32 indexed emailHash, address voter, bool vote);
-    event EmailRemovedFromBlacklist(bytes32 indexed emailHash);
+
 
     constructor() {
         owner = msg.sender;
@@ -31,13 +27,13 @@ contract EmailBlacklistVoting {
     function setBlacklistStatus(string memory email, bool status) public onlyOwner {
         bytes32 emailHash = keccak256(abi.encodePacked(email));
         blacklist[emailHash] = status;
-        emit EmailBlacklisted(emailHash, status);
+       
     }
 
     function addEmailContentHash(string memory email, string memory ipfsHash) public onlyOwner {
         bytes32 emailHash = keccak256(abi.encodePacked(email));
         emailContentHashes[emailHash] = ipfsHash;
-        emit EmailContentAdded(emailHash, ipfsHash);
+
     }
 
     function getEmailContentHash(string memory email) public view returns (string memory) {
@@ -54,7 +50,7 @@ contract EmailBlacklistVoting {
         bytes32 emailHash = keccak256(abi.encodePacked(email));
         require(blacklist[emailHash], "Email not in blacklist");
         voteEndTime[emailHash] = block.timestamp + VOTING_DURATION;
-        emit VoteInitiated(emailHash, voteEndTime[emailHash]);
+       
     }
 
     function castVote(string memory email, bool voteToRemove) public {
@@ -68,14 +64,14 @@ contract EmailBlacklistVoting {
             positiveVotes[emailHash]++;
             if(positiveVotes[emailHash] >= VOTES_REQUIRED_FOR_REMOVAL && positiveVotes[emailHash] > totalVotes / 2) {
                 blacklist[emailHash] = false;
-                emit EmailRemovedFromBlacklist(emailHash);
+                
             }
         } else {
             negativeVotes[emailHash]++;
         }
 
         hasVoted[emailHash][msg.sender] = true;
-        emit VoteCasted(emailHash, msg.sender, voteToRemove);
+        
     }
 
     function votesNeeded(string memory email) public view returns (uint256) {

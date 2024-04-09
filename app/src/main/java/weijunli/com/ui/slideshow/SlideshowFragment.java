@@ -31,7 +31,6 @@ import java.math.BigInteger;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import weijunli.com.solcontract.weijunli.com.solcontract.Blacklist_sol_EmailBlacklistVoting;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -129,15 +128,15 @@ public class SlideshowFragment extends Fragment {
 
                     // 获取智能合约中的数据
                     Log.d("Web3", "retrieving data from contract");
-                    String input = contract.getInputData().send();
-                    Log.d("Web3", "retrieved data from contract: " + input);
+                    String input_data = contract.inputData().send();
+                    Log.d("Web3", "retrieved data from contract: " + input_data);
                     EthGetTransactionCount ethGetTransactionCount2 = web3.ethGetTransactionCount(
                             credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
                     BigInteger nonce2 = ethGetTransactionCount.getTransactionCount();
                     Log.d("Web3", "Current nonce: " + nonce2);
                     // 回到主线程更新UI
                     getActivity().runOnUiThread(() -> {
-                        updateUI(transactionHash, "input data 2: " + input);
+                        updateUI(transactionHash, "input data 2: " + input_data);
                     });
                 } catch (Exception e) {
                     Log.e("Web3", "Error during Web3 interaction", e);

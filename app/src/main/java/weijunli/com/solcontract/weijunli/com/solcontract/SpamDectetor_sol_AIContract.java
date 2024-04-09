@@ -58,7 +58,7 @@ public class SpamDectetor_sol_AIContract extends Contract {
         super(BINARY, contractAddress, web3j, transactionManager, contractGasProvider);
     }
 
-    public RemoteFunctionCall<String> getInputData() {
+    public RemoteFunctionCall<String> getgetInputData() {
         final Function function = new Function(FUNC_GETINPUTDATA, 
                 Arrays.<Type>asList(), 
                 Arrays.<TypeReference<?>>asList(new TypeReference<Utf8String>() {}));
