@@ -128,7 +128,7 @@ public class SlideshowFragment extends Fragment {
 
                     // 获取智能合约中的数据
                     Log.d("Web3", "retrieving data from contract");
-                    String input_data = contract.inputData().send();
+                    String input_data = contract.getgetInputData().encodeFunctionCall();
                     Log.d("Web3", "retrieved data from contract: " + input_data);
                     EthGetTransactionCount ethGetTransactionCount2 = web3.ethGetTransactionCount(
                             credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
