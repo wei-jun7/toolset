@@ -67,6 +67,9 @@ dependencies {
     // 添加Web3j依赖
     implementation 'org.web3j:core:4.8.7'
     implementation 'io.metamask.androidsdk:metamask-android-sdk:0.5.2'
+
+    // pinata
+    implementation project(':pinata-java-sdk')
 }
 
 

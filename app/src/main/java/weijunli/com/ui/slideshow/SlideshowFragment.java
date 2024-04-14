@@ -8,6 +8,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -16,6 +17,9 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONObject;
 import org.pytorch.Module;
 import org.web3j.crypto.Credentials;
 import org.web3j.protocol.Web3j;
@@ -27,20 +31,25 @@ import org.web3j.tx.gas.ContractGasProvider;
 import org.web3j.tx.gas.StaticGasProvider;
 
 import java.io.File;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
+import okhttp3.MultipartBody;
+
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import weijunli.com.R;
 import weijunli.com.databinding.FragmentSlideshowBinding;
+import weijunli.com.solcontract.weijunli.BlackList_sol_EmailBlacklistVoting;
 import weijunli.com.solcontract.weijunli.com.solcontract.SpamDectetor_sol_AIContract;
-
+import weijunli.com.solcontract.weijunli.com.solcontract.Sol_blacklist_sol_EmailBlacklistVoting;
 
 
 public class SlideshowFragment extends Fragment {
@@ -62,7 +71,7 @@ public class SlideshowFragment extends Fragment {
     private Web3j web3;
     private static final String PRIVATE_KEY = "2fef86803ccff8a535c98b5540239d48eade281bcbdff051b8f6d6dd16226a6c";
     private static final String PRIVATE_KEY_BL = "393bd1213bc36f917e9619f4cd4d7b3c39e97e4c0bdb9cfc21115007b8587b78";
-    private static final String BLACKLIST_ADDRESS = "0xa686E985F79AeBc52835B9098092C378594b227D";
+    private static final String BLACKLIST_ADDRESS = "0xbb37E606A22714E523c6f60aC15150d2AA7c93f5";
     private static final String CONTRACT_ADDRESS = "0xde4f7367f524c1bB6dc41BC740cc470e3900E121";
     private static final BigInteger GAS_PRICE = BigInteger.valueOf(20_000_000_000L);
     private static final BigInteger GAS_LIMIT = BigInteger.valueOf(4_300_000);
@@ -88,6 +97,8 @@ public class SlideshowFragment extends Fragment {
         money1 = 100.00;
         whitelist = new String[]{};
         blacklist = new String[]{};
+        initializeBlacklist();
+        setupButtonListeners();
         System.out.print("get into initial");
         binding.sendmoney.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -149,16 +160,133 @@ public class SlideshowFragment extends Fragment {
         binding.button4.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                showDialog(whitelist, "load model");
-                // 使用 Module 类从 assets/model 目录加载模型文件
-                Module module = Module.load("model/pytorch_model.pt");
-                showDialog(whitelist, "success load model");
+                // 示例：获取用户输入的电子邮件地址
+                String email = "ipfsexample@example.com"; // getEmailInput();这应该是一个函数，从用户输入获取电子邮件地址
+                String filePath = "app/src/main/java/weijunli/com/ui/slideshow/blacklist.txt";
+                boolean status = true; // 假设我们总是将其设置为黑名单状态
+                final String[] ipfsHash = new String[1];
+                // 在后台线程中处理网络请求，避免阻塞UI线程
+                new Thread(() -> {
+                    // 调用上传到IPFS的方法，上传电子邮件数据
+
+                    try {
+                        ipfsHash[0] = uploadToIPFS(filePath);
+                    } catch (IOException | JSONException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                    if (ipfsHash != null) {
+                        // 在主线程中运行与用户界面相关的代码
+                        getActivity().runOnUiThread(() -> {
+                            try {
+                                Log.d("Web3", "Starting Web3 interaction");
+                                Web3j web3 = Web3j.build(new HttpService("https://sepolia.infura.io/v3/93c82ee662ce4f11b02edb3a42087f4a"));
+                                Credentials credentials = Credentials.create(PRIVATE_KEY_BL);
+                                // 获取nonce
+                                EthGetTransactionCount ethGetTransactionCount = web3.ethGetTransactionCount(
+                                        credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
+                                BigInteger nonce = ethGetTransactionCount.getTransactionCount();
+                                Log.d("Web3", "Current nonce: " + nonce);
+
+                                ContractGasProvider gasProvider = new StaticGasProvider(GAS_PRICE, GAS_LIMIT);
+                                Sol_blacklist_sol_EmailBlacklistVoting contract = Sol_blacklist_sol_EmailBlacklistVoting.load(BLACKLIST_ADDRESS, web3, credentials, gasProvider);
+
+                                // 假设contract是一个全局变量，指向您的智能合约
+                                TransactionReceipt transactionReceipt = contract.setBlacklistStatus(email, status, ipfsHash[0]).send();
 
 
-                showDialog(whitelist, "whitelist");
+                                if (transactionReceipt.isStatusOK()) {
+                                    showToast("Email has been blacklisted.");
+                                } else {
+                                    showToast("Failed to blacklist email.");
+                                }
+                            } catch (Exception e) {
+                                showToast("Error: " + e.getMessage());
+                            }
+                        });
+                    } else {
+                        getActivity().runOnUiThread(() -> showToast("Failed to upload to IPFS."));
+                    }
+                }).start();
             }
 
+            // 用于获取电子邮件输入的示例方法
+            private String getEmailInput() {
+                // 从您的输入字段或界面控件获取电子邮件地址
+                return message.getText().toString();
+            }
+
+            private String uploadToIPFS(String filePath) throws IOException, JSONException {
+                OkHttpClient client = new OkHttpClient();
+                MediaType MEDIA_TYPE_OCTET = MediaType.parse("application/octet-stream");
+
+                File file = new File(filePath);
+                RequestBody requestBody = new MultipartBody.Builder()
+                        .setType(MultipartBody.FORM)
+                        .addFormDataPart("file", file.getName(),
+                                RequestBody.create(file, MEDIA_TYPE_OCTET))
+                        .build();
+
+                Request request = new Request.Builder()
+                        .url("https://api.pinata.cloud/pinning/pinFileToIPFS") // 确保这是正确的URL
+                        .header("Authorization",
+                                "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJlZTE2ZGFkOC03MmUzLTQ0MTUtYjA5ZC1lYzYxNWZhZTVkN2UiLCJlbWFpbCI6ImppbmdodWF6aHUxQDE2My5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJpZCI6IkZSQTEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX0seyJpZCI6Ik5ZQzEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiNjhkNWRkNDBlNDg3NjdhMjhmMDUiLCJzY29wZWRLZXlTZWNyZXQiOiJhZGQ5ZmQ3YjZlOTVmZWU2YjEyNzY1MDg0YzY0YjhmMTVkN2I4M2UzNGEwYjNkMTgyNDE0YWU5ODYxY2M1M2I2IiwiaWF0IjoxNzEyOTQ2OTUxfQ.aE9NL09k1qX_cXaEwZJyPL__kjb5RhNZgUeO2CouRTs")
+                        .post(requestBody)
+                        .build();
+                Response response = client.newCall(request).execute();;
+                try {
+                    response = client.newCall(request).execute();
+                    if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
+
+                    String jsonData = response.body().string();
+                    JSONObject jsonObject = new JSONObject(jsonData);
+                    return jsonObject.getString("IpfsHash");
+                } finally {
+                    if (response != null) {
+                        response.close();
+                    }
+                }
+            }
+
+            /*
+            // 上传到IPFS的示例方法
+            private String uploadToIPFS(String emailData) {
+                OkHttpClient client = new OkHttpClient.Builder()
+                        .connectTimeout(30, TimeUnit.SECONDS)
+                        .writeTimeout(30, TimeUnit.SECONDS)
+                        .readTimeout(30, TimeUnit.SECONDS)
+                        .build();
+
+                MediaType MEDIA_TYPE_TEXT = MediaType.parse("text/plain; charset=utf-8");
+                RequestBody body = RequestBody.create(emailData, MEDIA_TYPE_TEXT);
+
+                // 注意：这里的URL是IPFS的HTTP API。根据您所使用的IPFS服务提供商，这个URL可能不同。
+                Request request = new Request.Builder()
+                        .url("https://ipfs.infura.io:5001/api/v0/add")
+                        .post(body)
+                        .build();
+
+                try {
+                    Response response = client.newCall(request).execute();
+                    if (response.isSuccessful() && response.body() != null) {
+                        // 解析返回的JSON以获取IPFS哈希
+                        String json = response.body().string();
+                        JSONObject jsonObject = new JSONObject(json);
+                        return jsonObject.getString("Hash");
+                    }
+                } catch (IOException | JSONException e) {
+                    e.printStackTrace();
+                }
+                return null;
+            }
+*/
+            // 显示Toast消息的帮助方法
+            private void showToast(String message) {
+                Toast.makeText(getActivity(), message, Toast.LENGTH_SHORT).show();
+            }
         });
+
+
 
         binding.button5.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -166,7 +294,6 @@ public class SlideshowFragment extends Fragment {
                 showDialog(blacklist, "Blacklist");
             }
         });
-
         binding.button3.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -243,22 +370,49 @@ public class SlideshowFragment extends Fragment {
 
         return root;
     }
+    private String uploadToIPFS(String data) {
+        OkHttpClient client = new OkHttpClient();
+        MediaType MEDIA_TYPE_TEXT = MediaType.parse("text/plain; charset=utf-8");
+
+        RequestBody body = RequestBody.create(data, MEDIA_TYPE_TEXT);
+        Request request = new Request.Builder()
+                .url("https://ipfs.infura.io:5001/api/v0/add")
+                .post(body)
+                .build();
+
+        try {
+            Response response = client.newCall(request).execute();
+            if (response.isSuccessful() && response.body() != null) {
+                String json = response.body().string();
+                JSONObject jsonObject = new JSONObject(json);
+                return jsonObject.getString("Hash");
+            }
+        } catch (IOException | JSONException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
 
     private void showDialog(String[] list, String name) {
-        // 假设这是你的白名单条目数组
-        // 使用StringBuilder来构建显示内容
-        StringBuilder whitelistStringBuilder = new StringBuilder();
-        for (String item : list) {
-            whitelistStringBuilder.append(item).append("\n");
-        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+        builder.setTitle(name);
 
-        // 创建并显示AlertDialog
-        new AlertDialog.Builder(getContext())
-                .setTitle(name)
-                .setMessage(whitelistStringBuilder.toString())
-                .setPositiveButton("确定", null)
-                .create()
-                .show();
+        // 创建滚动视图和文本视图来显示列表
+        ScrollView scrollView = new ScrollView(getContext());
+        TextView textView = new TextView(getContext());
+        textView.setPadding(32, 32, 32, 32); // 设置适当的内边距
+
+        StringBuilder listStringBuilder = new StringBuilder();
+        for (String item : list) {
+            listStringBuilder.append(item).append("\n");
+        }
+        textView.setText(listStringBuilder.toString());
+        scrollView.addView(textView);
+
+        // 设置滚动视图为对话框内容
+        builder.setView(scrollView);
+        builder.setPositiveButton("确定", null);
+        builder.create().show();
     }
 
     private void updateUI(String transactionHash, String inputData) {
@@ -408,6 +562,15 @@ public class SlideshowFragment extends Fragment {
             }
         });
     }
+    private void setupButtonListeners() {
+        binding.button5.setOnClickListener(view -> showDialog(blacklist, "Blacklist"));
+    }
 
+    private void initializeBlacklist() {
+        blacklist = new String[50];  // 假设我们有1000个邮箱地址
+        for (int i = 0; i < 50; i++) {
+            blacklist[i] = "user" + (i + 1) + "@example.com";
+        }
+    }
 
 }

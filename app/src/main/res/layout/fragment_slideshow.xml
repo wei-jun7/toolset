@@ -138,7 +138,7 @@
         android:layout_marginTop="28dp"
         android:layout_marginBottom="18dp"
         android:background="#FF000000"
-        android:text="show the white list"
+        android:text="Set blakclist(test)"
         android:textColor="#FFFFFF"
         app:layout_constraintBottom_toTopOf="@+id/Amount"
         app:layout_constraintStart_toStartOf="parent"
