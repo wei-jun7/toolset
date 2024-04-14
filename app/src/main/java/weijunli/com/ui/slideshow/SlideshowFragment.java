@@ -1,6 +1,7 @@
 package weijunli.com.ui.slideshow;
 
 import android.content.DialogInterface;
+import android.content.res.AssetManager;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Log;
@@ -32,6 +33,7 @@ import org.web3j.tx.gas.StaticGasProvider;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigInteger;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -162,84 +164,76 @@ public class SlideshowFragment extends Fragment {
             public void onClick(View view) {
                 // 示例：获取用户输入的电子邮件地址
                 String email = "ipfsexample@example.com"; // getEmailInput();这应该是一个函数，从用户输入获取电子邮件地址
-                String filePath = "app/src/main/java/weijunli/com/ui/slideshow/blacklist.txt";
+                try {
+                    InputStream is = getContext().getAssets().open("blacklist.txt");
+                    // 从 InputStream 读取文件内容
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    // 处理异常
+                }
+
                 boolean status = true; // 假设我们总是将其设置为黑名单状态
                 final String[] ipfsHash = new String[1];
                 // 在后台线程中处理网络请求，避免阻塞UI线程
                 new Thread(() -> {
-                    // 调用上传到IPFS的方法，上传电子邮件数据
-
                     try {
-                        ipfsHash[0] = uploadToIPFS(filePath);
+                        ipfsHash[0] = uploadToIPFS();
+                        if (ipfsHash[0] != null) {
+                            getActivity().runOnUiThread(() -> {
+                                Toast.makeText(getActivity(), "File uploaded to IPFS. Hash: " + ipfsHash[0], Toast.LENGTH_LONG).show();
+                            });
+                        } else {
+                            getActivity().runOnUiThread(() -> {
+                                Toast.makeText(getActivity(), "Failed to upload to IPFS.", Toast.LENGTH_LONG).show();
+                            });
+                        }
                     } catch (IOException | JSONException e) {
-                        throw new RuntimeException(e);
-                    }
-
-                    if (ipfsHash != null) {
-                        // 在主线程中运行与用户界面相关的代码
+                        Log.e("UploadError", "Error uploading file", e);
                         getActivity().runOnUiThread(() -> {
-                            try {
-                                Log.d("Web3", "Starting Web3 interaction");
-                                Web3j web3 = Web3j.build(new HttpService("https://sepolia.infura.io/v3/93c82ee662ce4f11b02edb3a42087f4a"));
-                                Credentials credentials = Credentials.create(PRIVATE_KEY_BL);
-                                // 获取nonce
-                                EthGetTransactionCount ethGetTransactionCount = web3.ethGetTransactionCount(
-                                        credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
-                                BigInteger nonce = ethGetTransactionCount.getTransactionCount();
-                                Log.d("Web3", "Current nonce: " + nonce);
-
-                                ContractGasProvider gasProvider = new StaticGasProvider(GAS_PRICE, GAS_LIMIT);
-                                Sol_blacklist_sol_EmailBlacklistVoting contract = Sol_blacklist_sol_EmailBlacklistVoting.load(BLACKLIST_ADDRESS, web3, credentials, gasProvider);
-
-                                // 假设contract是一个全局变量，指向您的智能合约
-                                TransactionReceipt transactionReceipt = contract.setBlacklistStatus(email, status, ipfsHash[0]).send();
-
-
-                                if (transactionReceipt.isStatusOK()) {
-                                    showToast("Email has been blacklisted.");
-                                } else {
-                                    showToast("Failed to blacklist email.");
-                                }
-                            } catch (Exception e) {
-                                showToast("Error: " + e.getMessage());
-                            }
+                            new AlertDialog.Builder(getActivity())
+                                    .setTitle("Error")
+                                    .setMessage("Error uploading file: " + e.toString())
+                                    .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
+                                    .show();
                         });
-                    } else {
-                        getActivity().runOnUiThread(() -> showToast("Failed to upload to IPFS."));
                     }
                 }).start();
             }
 
-
-            private String uploadToIPFS(String filePath) throws IOException, JSONException {
+            private String uploadToIPFS() throws IOException, JSONException {
                 OkHttpClient client = new OkHttpClient();
-                MediaType MEDIA_TYPE_OCTET = MediaType.parse("application/octet-stream");
+                MediaType MEDIA_TYPE_OCTET = MediaType.parse("text/plain");
 
-                File file = new File(filePath);
+                // Access the file from the assets directory
+                AssetManager assetManager = getActivity().getAssets();
+                InputStream inputStream = assetManager.open("blacklist.txt");
+                byte[] fileBytes = new byte[inputStream.available()];
+                inputStream.read(fileBytes);
+                inputStream.close();
+
                 RequestBody requestBody = new MultipartBody.Builder()
                         .setType(MultipartBody.FORM)
-                        .addFormDataPart("file", file.getName(),
-                                RequestBody.create(file, MEDIA_TYPE_OCTET))
+                        .addFormDataPart("file", "blacklist.txt",
+                                RequestBody.create(MEDIA_TYPE_OCTET, fileBytes))
                         .build();
 
                 Request request = new Request.Builder()
                         .url("https://api.pinata.cloud/pinning/pinFileToIPFS") // 确保这是正确的URL
-                        .header("Authorization",
-                                "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJlZTE2ZGFkOC03MmUzLTQ0MTUtYjA5ZC1lYzYxNWZhZTVkN2UiLCJlbWFpbCI6ImppbmdodWF6aHUxQDE2My5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJpZCI6IkZSQTEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX0seyJpZCI6Ik5ZQzEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiNjhkNWRkNDBlNDg3NjdhMjhmMDUiLCJzY29wZWRLZXlTZWNyZXQiOiJhZGQ5ZmQ3YjZlOTVmZWU2YjEyNzY1MDg0YzY0YjhmMTVkN2I4M2UzNGEwYjNkMTgyNDE0YWU5ODYxY2M1M2I2IiwiaWF0IjoxNzEyOTQ2OTUxfQ.aE9NL09k1qX_cXaEwZJyPL__kjb5RhNZgUeO2CouRTs")
+                        .header("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJlZTE2ZGFkOC03MmUzLTQ0MTUtYjA5ZC1lYzYxNWZhZTVkN2UiLCJlbWFpbCI6ImppbmdodWF6aHUxQDE2My5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJpZCI6IkZSQTEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX0seyJpZCI6Ik5ZQzEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiZTNlZjIxMjEyNmQyOWY3YWZkNjUiLCJzY29wZWRLZXlTZWNyZXQiOiI1NzBhYTU1OTliMmM2ODQ2MmQ1ODQ5MzQxMTZjZWJmODdmMDE3NWZhN2E1M2NmNTUzZDc3NDUyZjA0MjQ0OGNhIiwiaWF0IjoxNzEzMDY4Njc2fQ.X98QI1EoA0uiMvj8cZxl4SbteqyXwlDTvrSA7O64qCo") // 替换 <YOUR_JWT_TOKEN_HERE> 为您的 token
                         .post(requestBody)
                         .build();
-                Response response = client.newCall(request).execute();;
                 try {
-                    response = client.newCall(request).execute();
-                    if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
+                    Response response = client.newCall(request).execute();
+                    if (!response.isSuccessful()) {
+                        throw new IOException("Unexpected code " + response + " with body " + response.body().string());
+                    }
 
                     String jsonData = response.body().string();
                     JSONObject jsonObject = new JSONObject(jsonData);
                     return jsonObject.getString("IpfsHash");
-                } finally {
-                    if (response != null) {
-                        response.close();
-                    }
+                } catch (IOException | JSONException e) {
+                    Log.e("IPFSUpload", "Error uploading to IPFS", e);
+                    throw e; // Or handle it appropriately
                 }
             }
 
