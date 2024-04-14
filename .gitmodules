@@ -1,0 +1,3 @@
+[submodule "pinata-java-sdk"]
+	path = pinata-java-sdk
+	url = https://github.com/zinebfadili/pinata-java-sdk.git

@@ -210,11 +210,6 @@ public class SlideshowFragment extends Fragment {
                 }).start();
             }
 
-            // 用于获取电子邮件输入的示例方法
-            private String getEmailInput() {
-                // 从您的输入字段或界面控件获取电子邮件地址
-                return message.getText().toString();
-            }
 
             private String uploadToIPFS(String filePath) throws IOException, JSONException {
                 OkHttpClient client = new OkHttpClient();
