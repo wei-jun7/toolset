@@ -1,0 +1,68 @@
+[
+  {
+    "email": "user1@example.com",
+    "reason": "Reported for spam",
+    "addedBy": "detector",
+    "dateAdded": "2024-04-14",
+    "active": true,
+    "votes": {
+      "toRemove": 4,
+      "toKeep": 2
+    }
+  },
+  {
+    "email": "user2@example.com",
+    "reason": "Repeated abuse",
+    "addedBy": "detector",
+    "dateAdded": "2024-04-15",
+    "active": true,
+    "votes": {
+      "toRemove": 3,
+      "toKeep": 3
+    }
+  },
+  {
+    "email": "user3@example.com",
+    "reason": "Phishing attempts",
+    "addedBy": "detector",
+    "dateAdded": "2024-04-16",
+    "active": true,
+    "votes": {
+      "toRemove": 5,
+      "toKeep": 1
+    }
+  },
+  {
+    "email": "user4@example.com",
+    "reason": "Harassment",
+    "addedBy": "detector",
+    "dateAdded": "2024-04-17",
+    "active": true,
+    "votes": {
+      "toRemove": 0,
+      "toKeep": 5
+    }
+  },
+  {
+    "email": "user5@example.com",
+    "reason": "Fake accounts",
+    "addedBy": "detector",
+    "dateAdded": "2024-04-18",
+    "active": true,
+    "votes": {
+      "toRemove": 2,
+      "toKeep": 2
+    }
+  },
+  {
+    "email": "user6@example.com",
+    "reason": "Scamming",
+    "addedBy": "detector",
+    "dateAdded": "2024-04-19",
+    "active": true,
+    "votes": {
+      "toRemove": 3,
+      "toKeep": 0
+    }
+  }
+]

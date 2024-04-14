@@ -60,16 +60,16 @@
 
     <TextView
         android:id="@+id/final_result"
-        android:layout_width="301dp"
-        android:layout_height="124dp"
+        android:layout_width="259dp"
+        android:layout_height="126dp"
         android:text="Final result："
         android:textSize="10dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.472"
+        app:layout_constraintHorizontal_bias="0.368"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/remove_message"
-        app:layout_constraintVertical_bias="0.027"
+        app:layout_constraintVertical_bias="0.025"
         tools:ignore="MissingConstraints" />
 
     <TextView
@@ -186,6 +186,19 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/remove_message"
         tools:ignore="MissingConstraints" />
+
+    <Button
+        android:id="@+id/button7"
+        android:layout_width="119dp"
+        android:layout_height="72dp"
+        android:layout_marginEnd="32dp"
+        android:text="Vote to whitelist"
+        app:layout_constraintBottom_toTopOf="@+id/button5"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.673"
+        app:layout_constraintStart_toEndOf="@+id/final_result"
+        app:layout_constraintTop_toBottomOf="@+id/button3"
+        app:layout_constraintVertical_bias="0.806" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

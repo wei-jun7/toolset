@@ -8,7 +8,7 @@ contract EmailBlacklistVoting {
     mapping(bytes32 => uint256) private positiveVotes;
     mapping(bytes32 => uint256) private negativeVotes;
     mapping(bytes32 => string) private emailContentHashes;
-
+    string public latestBlacklistCid;
     uint256 public constant VOTES_REQUIRED_FOR_REMOVAL = 3;
     uint256 public constant VOTING_DURATION = 3 days;
     mapping(bytes32 => uint256) public voteEndTime;
@@ -21,7 +21,9 @@ contract EmailBlacklistVoting {
         require(msg.sender == owner, "Not authorized");
         _;
     }
-
+    function updateBlacklistCid(string memory _newCid) public {
+        latestBlacklistCid = _newCid;
+    }
 
     function setBlacklistStatus(string memory email, bool status, string memory ipfsHash) public onlyOwner {
         bytes32 emailHash = keccak256(abi.encodePacked(email));

@@ -1,9 +1,12 @@
 package weijunli.com.ui.slideshow;
 
+import android.content.Context;
 import android.content.DialogInterface;
+import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.os.Bundle;
 import android.text.InputType;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -18,6 +21,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONObject;
@@ -31,10 +35,18 @@ import org.web3j.protocol.http.HttpService;
 import org.web3j.tx.gas.ContractGasProvider;
 import org.web3j.tx.gas.StaticGasProvider;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.math.BigInteger;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -52,6 +64,7 @@ import weijunli.com.databinding.FragmentSlideshowBinding;
 import weijunli.com.solcontract.weijunli.BlackList_sol_EmailBlacklistVoting;
 import weijunli.com.solcontract.weijunli.com.solcontract.SpamDectetor_sol_AIContract;
 import weijunli.com.solcontract.weijunli.com.solcontract.Sol_blacklist_sol_EmailBlacklistVoting;
+import weijunli.com.solcontract.weijunli.com.solcontract.Blacklist_sol_EmailBlacklistVoting;
 
 
 public class SlideshowFragment extends Fragment {
@@ -73,7 +86,7 @@ public class SlideshowFragment extends Fragment {
     private Web3j web3;
     private static final String PRIVATE_KEY = "2fef86803ccff8a535c98b5540239d48eade281bcbdff051b8f6d6dd16226a6c";
     private static final String PRIVATE_KEY_BL = "393bd1213bc36f917e9619f4cd4d7b3c39e97e4c0bdb9cfc21115007b8587b78";
-    private static final String BLACKLIST_ADDRESS = "0xbb37E606A22714E523c6f60aC15150d2AA7c93f5";
+    private static final String BLACKLIST_ADDRESS = "0x4cAd379DC50dA5Ea71b99DfEa925A8564852ef2E";
     private static final String CONTRACT_ADDRESS = "0xde4f7367f524c1bB6dc41BC740cc470e3900E121";
     private static final BigInteger GAS_PRICE = BigInteger.valueOf(20_000_000_000L);
     private static final BigInteger GAS_LIMIT = BigInteger.valueOf(4_300_000);
@@ -159,26 +172,21 @@ public class SlideshowFragment extends Fragment {
         });
 
 
+
+        // Test the adding process. It will be combined with the view result button and add black list automatically.
         binding.button4.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 // 示例：获取用户输入的电子邮件地址
                 String email = "ipfsexample@example.com"; // getEmailInput();这应该是一个函数，从用户输入获取电子邮件地址
-                try {
-                    InputStream is = getContext().getAssets().open("blacklist.txt");
-                    // 从 InputStream 读取文件内容
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    // 处理异常
-                }
 
-                boolean status = true; // 假设我们总是将其设置为黑名单状态
                 final String[] ipfsHash = new String[1];
                 // 在后台线程中处理网络请求，避免阻塞UI线程
                 new Thread(() -> {
                     try {
-                        ipfsHash[0] = uploadToIPFS();
+                        ipfsHash[0] = uploadToIPFS(email);
                         if (ipfsHash[0] != null) {
+                            saveCid(ipfsHash[0]);
                             getActivity().runOnUiThread(() -> {
                                 Toast.makeText(getActivity(), "File uploaded to IPFS. Hash: " + ipfsHash[0], Toast.LENGTH_LONG).show();
                             });
@@ -200,30 +208,48 @@ public class SlideshowFragment extends Fragment {
                 }).start();
             }
 
-            private String uploadToIPFS() throws IOException, JSONException {
+            private String uploadToIPFS(String emailToAdd) throws IOException, JSONException {
                 OkHttpClient client = new OkHttpClient();
-                MediaType MEDIA_TYPE_OCTET = MediaType.parse("text/plain");
+                MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
 
-                // Access the file from the assets directory
+                // Read the existing blacklist JSON
                 AssetManager assetManager = getActivity().getAssets();
-                InputStream inputStream = assetManager.open("blacklist.txt");
-                byte[] fileBytes = new byte[inputStream.available()];
-                inputStream.read(fileBytes);
+                InputStream inputStream = assetManager.open("blacklist.json");
+                String jsonContent = convertStreamToString(inputStream);
                 inputStream.close();
+                JSONArray blacklist = new JSONArray(jsonContent);
 
+                // Create a new entry to add to the blacklist
+                JSONObject newEntry = new JSONObject();
+                newEntry.put("email", emailToAdd);
+                newEntry.put("reason", "Test entry");
+                newEntry.put("addedBy", "admin");
+                newEntry.put("dateAdded", new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date()));
+                newEntry.put("active", true);
+                newEntry.put("votes", new JSONObject().put("toRemove", 0).put("toKeep", 0));
+
+                // Append the new entry to the blacklist
+                blacklist.put(newEntry);
+
+                // Convert the updated blacklist back to a byte array
+                byte[] fileBytes = blacklist.toString().getBytes();
+
+                // Upload the updated blacklist to IPFS
                 RequestBody requestBody = new MultipartBody.Builder()
                         .setType(MultipartBody.FORM)
-                        .addFormDataPart("file", "blacklist.txt",
-                                RequestBody.create(MEDIA_TYPE_OCTET, fileBytes))
+                        .addFormDataPart("file", "blacklist.json",
+                                RequestBody.create(MEDIA_TYPE_JSON, fileBytes))
                         .build();
 
                 Request request = new Request.Builder()
-                        .url("https://api.pinata.cloud/pinning/pinFileToIPFS") // 确保这是正确的URL
-                        .header("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJlZTE2ZGFkOC03MmUzLTQ0MTUtYjA5ZC1lYzYxNWZhZTVkN2UiLCJlbWFpbCI6ImppbmdodWF6aHUxQDE2My5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJpZCI6IkZSQTEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX0seyJpZCI6Ik5ZQzEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiZTNlZjIxMjEyNmQyOWY3YWZkNjUiLCJzY29wZWRLZXlTZWNyZXQiOiI1NzBhYTU1OTliMmM2ODQ2MmQ1ODQ5MzQxMTZjZWJmODdmMDE3NWZhN2E1M2NmNTUzZDc3NDUyZjA0MjQ0OGNhIiwiaWF0IjoxNzEzMDY4Njc2fQ.X98QI1EoA0uiMvj8cZxl4SbteqyXwlDTvrSA7O64qCo") // 替换 <YOUR_JWT_TOKEN_HERE> 为您的 token
+                        .url("https://api.pinata.cloud/pinning/pinFileToIPFS")
+                        .header("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJlZTE2ZGFkOC03MmUzLTQ0MTUtYjA5ZC1lYzYxNWZhZTVkN2UiLCJlbWFpbCI6ImppbmdodWF6aHUxQDE2My5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJpZCI6IkZSQTEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX0seyJpZCI6Ik5ZQzEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiZTNlZjIxMjEyNmQyOWY3YWZkNjUiLCJzY29wZWRLZXlTZWNyZXQiOiI1NzBhYTU1OTliMmM2ODQ2MmQ1ODQ5MzQxMTZjZWJmODdmMDE3NWZhN2E1M2NmNTUzZDc3NDUyZjA0MjQ0OGNhIiwiaWF0IjoxNzEzMDY4Njc2fQ.X98QI1EoA0uiMvj8cZxl4SbteqyXwlDTvrSA7O64qCo") // Use your actual JWT
                         .post(requestBody)
                         .build();
+
+                Response response = null;
                 try {
-                    Response response = client.newCall(request).execute();
+                    response = client.newCall(request).execute();
                     if (!response.isSuccessful()) {
                         throw new IOException("Unexpected code " + response + " with body " + response.body().string());
                     }
@@ -231,44 +257,69 @@ public class SlideshowFragment extends Fragment {
                     String jsonData = response.body().string();
                     JSONObject jsonObject = new JSONObject(jsonData);
                     return jsonObject.getString("IpfsHash");
-                } catch (IOException | JSONException e) {
-                    Log.e("IPFSUpload", "Error uploading to IPFS", e);
-                    throw e; // Or handle it appropriately
-                }
-            }
-
-            /*
-            // 上传到IPFS的示例方法
-            private String uploadToIPFS(String emailData) {
-                OkHttpClient client = new OkHttpClient.Builder()
-                        .connectTimeout(30, TimeUnit.SECONDS)
-                        .writeTimeout(30, TimeUnit.SECONDS)
-                        .readTimeout(30, TimeUnit.SECONDS)
-                        .build();
-
-                MediaType MEDIA_TYPE_TEXT = MediaType.parse("text/plain; charset=utf-8");
-                RequestBody body = RequestBody.create(emailData, MEDIA_TYPE_TEXT);
-
-                // 注意：这里的URL是IPFS的HTTP API。根据您所使用的IPFS服务提供商，这个URL可能不同。
-                Request request = new Request.Builder()
-                        .url("https://ipfs.infura.io:5001/api/v0/add")
-                        .post(body)
-                        .build();
-
-                try {
-                    Response response = client.newCall(request).execute();
-                    if (response.isSuccessful() && response.body() != null) {
-                        // 解析返回的JSON以获取IPFS哈希
-                        String json = response.body().string();
-                        JSONObject jsonObject = new JSONObject(json);
-                        return jsonObject.getString("Hash");
+                } finally {
+                    if (response.body() != null) {
+                        response.body().close();
                     }
-                } catch (IOException | JSONException e) {
-                    e.printStackTrace();
                 }
-                return null;
             }
-*/
+
+            private void updateContractWithNewCid(String newCid) {
+                Executors.newSingleThreadExecutor().submit(() -> {
+                    try {
+
+                        Web3j web3j = Web3j.build(new HttpService("https://sepolia.infura.io/v3/9fa6abac55ae44fda12e3eae5e769bb9"));
+                        Credentials credentials = Credentials.create(PRIVATE_KEY_BL);
+                        if (web3j != null) {
+                            EthGetTransactionCount ethGetTransactionCount = web3.ethGetTransactionCount(
+                                    credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
+                            BigInteger nonce = ethGetTransactionCount.getTransactionCount();
+
+                            ContractGasProvider gasProvider = new StaticGasProvider(GAS_PRICE, GAS_LIMIT);
+                            Blacklist_sol_EmailBlacklistVoting contract = Blacklist_sol_EmailBlacklistVoting.load(BLACKLIST_ADDRESS, web3, credentials, gasProvider);
+
+                            // 更新合约中的 CID
+                            TransactionReceipt transactionReceipt = contract.updateBlacklistCid(newCid).send();
+                            getActivity().runOnUiThread(() -> {
+                                Toast.makeText(getActivity(), "Contract CID updated: " + transactionReceipt.getTransactionHash(), Toast.LENGTH_LONG).show();
+                            });
+                        } else {
+                            // web3j 实例为 null，处理错误
+                            getActivity().runOnUiThread(() -> {
+                                Toast.makeText(getActivity(), "Web3j instance is null.", Toast.LENGTH_LONG).show();
+                            });
+                        }
+
+
+                    } catch (Exception e) {
+                        getActivity().runOnUiThread(() -> {
+                            // 创建 AlertDialog.Builder 实例
+                            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+                            builder.setTitle("Error"); // 设置对话框的标题
+                            builder.setMessage("Error updating contract: " + e.getMessage()); // 设置显示的错误信息
+
+                            // 设置对话框的“OK”按钮，点击后关闭对话框
+                            builder.setPositiveButton("OK", (dialog, which) -> dialog.dismiss());
+
+                            // 创建并显示对话框
+                            builder.create().show();
+                        });
+                    }
+                });
+            }
+
+            // Helper method to convert InputStream to String
+            private String convertStreamToString(InputStream is) throws IOException {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line).append('\n');
+                }
+                reader.close();
+                return sb.toString();
+            }
+
             // 显示Toast消息的帮助方法
             private void showToast(String message) {
                 Toast.makeText(getActivity(), message, Toast.LENGTH_SHORT).show();
@@ -277,12 +328,63 @@ public class SlideshowFragment extends Fragment {
 
 
 
+
         binding.button5.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                showDialog(blacklist, "Blacklist");
+                // 获取存储在本地的 CID
+                String cid = getCid();
+
+                // 检查 CID 是否存在
+                if (cid.equals("defaultCid")) {
+                    showToast("No CID found. Please upload the blacklist first.");
+                    return;
+                }
+
+                // 获取 IPFS 上的黑名单 JSON
+                String ipfsUrl = "https://ipfs.io/ipfs/" + cid;
+
+                // 在后台线程中执行网络请求
+                Executors.newSingleThreadExecutor().submit(() -> {
+                    try {
+                        OkHttpClient client = new OkHttpClient();
+                        Request request = new Request.Builder().url(ipfsUrl).build();
+                        Response response = client.newCall(request).execute();
+
+                        if (response.isSuccessful() && response.body() != null) {
+                            String blacklistContent = response.body().string();
+                            // 解析黑名单内容
+                            JSONArray jsonArray = new JSONArray(blacklistContent);
+                            StringBuilder builder = new StringBuilder();
+
+                            for (int i = 0; i < jsonArray.length(); i++) {
+                                JSONObject jsonObject = jsonArray.getJSONObject(i);
+                                builder.append("Email: ").append(jsonObject.getString("email"))
+                                        .append("\nReason: ").append(jsonObject.getString("reason"))
+                                        .append("\nAdded by: ").append(jsonObject.getString("addedBy"))
+                                        .append("\nDate added: ").append(jsonObject.getString("dateAdded"))
+                                        .append("\nActive: ").append(jsonObject.getBoolean("active") ? "Yes" : "No")
+                                        .append("\nVotes to remove: ").append(jsonObject.getJSONObject("votes").getInt("toRemove"))
+                                        .append("\nVotes to keep: ").append(jsonObject.getJSONObject("votes").getInt("toKeep"))
+                                        .append("\n\n");
+                            }
+
+                            final String displayText = builder.toString();
+
+                            // 更新 UI 显示黑名单
+                            getActivity().runOnUiThread(() -> showDialog(displayText, "Blacklist"));
+                        } else {
+                            getActivity().runOnUiThread(() -> showToast("Failed to fetch the blacklist."));
+                        }
+                    } catch (IOException | JSONException e) {
+                        getActivity().runOnUiThread(() -> showToast("Error: " + e.getMessage()));
+                    }
+                });
             }
         });
+
+
+
         binding.button3.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -359,6 +461,54 @@ public class SlideshowFragment extends Fragment {
 
         return root;
     }
+    public void saveCid(String cid) {
+        SharedPreferences sharedPreferences = getActivity().getSharedPreferences("AppPreferences", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putString("BlacklistCid", cid);
+        editor.apply(); // 或者 editor.commit(); 以同步方式保存
+    }
+
+    public String getCid() {
+        SharedPreferences sharedPreferences = getActivity().getSharedPreferences("AppPreferences", Context.MODE_PRIVATE);
+        return sharedPreferences.getString("BlacklistCid", "defaultCid");
+    }
+
+    private String fetchBlacklistFromIPFS() throws IOException {
+        // 替换成实际的IPFS CID获取URL
+        String ipfsGatewayUrl = "https://gateway.ipfs.io/ipfs/YOUR_IPFS_CID_HERE";
+        OkHttpClient client = new OkHttpClient();
+        Request request = new Request.Builder()
+                .url(ipfsGatewayUrl)
+                .build();
+        try (Response response = client.newCall(request).execute()) {
+            if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
+            // 返回黑名单的内容
+            return response.body().string();
+        }
+    }
+
+    private String[] parseBlacklist(String content) {
+        // 根据黑名单的具体格式来解析内容，这里只是一个例子
+        List<String> itemsList = new ArrayList<>();
+        try {
+            JSONArray jsonArray = new JSONArray(content);
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject jsonObject = jsonArray.getJSONObject(i);
+                itemsList.add(jsonObject.getString("email")); // 或者更详细的信息
+            }
+        } catch (JSONException e) {
+            Log.e("ParseBlacklist", "Error parsing blacklist JSON", e);
+        }
+        // 将List转换为String数组以便显示
+        String[] itemsArray = new String[itemsList.size()];
+        itemsArray = itemsList.toArray(itemsArray);
+        return itemsArray;
+    }
+
+    // 显示Toast消息的帮助方法
+    private void showToast(String message) {
+        Toast.makeText(getActivity(), message, Toast.LENGTH_SHORT).show();
+    }
     private String uploadToIPFS(String data) {
         OkHttpClient client = new OkHttpClient();
         MediaType MEDIA_TYPE_TEXT = MediaType.parse("text/plain; charset=utf-8");
@@ -382,26 +532,19 @@ public class SlideshowFragment extends Fragment {
         return null;
     }
 
-    private void showDialog(String[] list, String name) {
+    private void showDialog(String displayText, String title) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-        builder.setTitle(name);
+        builder.setTitle(title);
 
-        // 创建滚动视图和文本视图来显示列表
-        ScrollView scrollView = new ScrollView(getContext());
-        TextView textView = new TextView(getContext());
-        textView.setPadding(32, 32, 32, 32); // 设置适当的内边距
+        final TextView textView = new TextView(getContext());
+        textView.setText(displayText);
+        textView.setPadding(20, 20, 20, 20);
+        textView.setMovementMethod(new ScrollingMovementMethod());
 
-        StringBuilder listStringBuilder = new StringBuilder();
-        for (String item : list) {
-            listStringBuilder.append(item).append("\n");
-        }
-        textView.setText(listStringBuilder.toString());
-        scrollView.addView(textView);
-
-        // 设置滚动视图为对话框内容
-        builder.setView(scrollView);
-        builder.setPositiveButton("确定", null);
-        builder.create().show();
+        builder.setView(textView);
+        builder.setPositiveButton("OK", null);
+        AlertDialog dialog = builder.create();
+        dialog.show();
     }
 
     private void updateUI(String transactionHash, String inputData) {
@@ -419,7 +562,7 @@ public class SlideshowFragment extends Fragment {
     private void showErrorDialog() {
         getActivity().runOnUiThread(() -> {
             // Assuming showDialog is a method that shows an error dialog
-            showDialog(new String[]{"error"}, "Transaction Error");
+            showDialog(Arrays.toString(new String[]{"error"}), "Transaction Error");
             Log.d("Web3", "Error dialog shown");
         });
     }
@@ -552,7 +695,7 @@ public class SlideshowFragment extends Fragment {
         });
     }
     private void setupButtonListeners() {
-        binding.button5.setOnClickListener(view -> showDialog(blacklist, "Blacklist"));
+        binding.button5.setOnClickListener(view -> showDialog(Arrays.toString(blacklist), "Blacklist"));
     }
 
     private void initializeBlacklist() {
