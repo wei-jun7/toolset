@@ -18,4 +18,8 @@ contract AIContract {
         return  outputData;
     }
 
+    function getOutputData() public view returns (string memory) {
+        return outputData;
+    }
+
 }

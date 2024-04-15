@@ -200,5 +200,14 @@
         app:layout_constraintTop_toBottomOf="@+id/button3"
         app:layout_constraintVertical_bias="0.806" />
 
+    <Button
+        tools:ignore="MissingConstraints"
+        android:id="@+id/reward"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="test reward"
+        tools:layout_editor_absoluteX="22dp"
+        tools:layout_editor_absoluteY="372dp" />
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>
