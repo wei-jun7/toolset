@@ -1,4 +1,4 @@
-### For run the code on the app 
+### For run the code on the phone with the app
 
 ### Frist step:
 you can download release version and install on the Andriod phone 
