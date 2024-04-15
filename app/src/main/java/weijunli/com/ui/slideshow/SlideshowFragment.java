@@ -12,7 +12,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -24,8 +23,6 @@ import androidx.lifecycle.ViewModelProvider;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.json.JSONObject;
-import org.pytorch.Module;
 import org.web3j.crypto.Credentials;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.DefaultBlockParameterName;
@@ -37,6 +34,8 @@ import org.web3j.tx.gas.StaticGasProvider;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -48,7 +47,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -61,9 +59,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import weijunli.com.R;
 import weijunli.com.databinding.FragmentSlideshowBinding;
-import weijunli.com.solcontract.weijunli.BlackList_sol_EmailBlacklistVoting;
 import weijunli.com.solcontract.weijunli.com.solcontract.SpamDectetor_sol_AIContract;
-import weijunli.com.solcontract.weijunli.com.solcontract.Sol_blacklist_sol_EmailBlacklistVoting;
 import weijunli.com.solcontract.weijunli.com.solcontract.Blacklist_sol_EmailBlacklistVoting;
 
 
@@ -188,7 +184,7 @@ public class SlideshowFragment extends Fragment {
                         if (ipfsHash[0] != null) {
                             saveCid(ipfsHash[0]);
                             getActivity().runOnUiThread(() -> {
-                                Toast.makeText(getActivity(), "File uploaded to IPFS. Hash: " + ipfsHash[0], Toast.LENGTH_LONG).show();
+                                Toast.makeText(getActivity(), "IPFS Hash: " + ipfsHash[0], Toast.LENGTH_LONG).show();
                             });
                         } else {
                             getActivity().runOnUiThread(() -> {
@@ -295,13 +291,11 @@ public class SlideshowFragment extends Fragment {
                         getActivity().runOnUiThread(() -> {
                             // 创建 AlertDialog.Builder 实例
                             AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-                            builder.setTitle("Error"); // 设置对话框的标题
-                            builder.setMessage("Error updating contract: " + e.getMessage()); // 设置显示的错误信息
+                            builder.setTitle("Error");
+                            builder.setMessage("Error updating contract: " + e.getMessage());
 
-                            // 设置对话框的“OK”按钮，点击后关闭对话框
                             builder.setPositiveButton("OK", (dialog, which) -> dialog.dismiss());
 
-                            // 创建并显示对话框
                             builder.create().show();
                         });
                     }
@@ -353,8 +347,10 @@ public class SlideshowFragment extends Fragment {
 
                         if (response.isSuccessful() && response.body() != null) {
                             String blacklistContent = response.body().string();
+                            saveFileContent(blacklistContent);
                             // 解析黑名单内容
                             JSONArray jsonArray = new JSONArray(blacklistContent);
+
                             StringBuilder builder = new StringBuilder();
 
                             for (int i = 0; i < jsonArray.length(); i++) {
@@ -373,6 +369,7 @@ public class SlideshowFragment extends Fragment {
 
                             // 更新 UI 显示黑名单
                             getActivity().runOnUiThread(() -> showDialog(displayText, "Blacklist"));
+
                         } else {
                             getActivity().runOnUiThread(() -> showToast("Failed to fetch the blacklist."));
                         }
@@ -472,6 +469,24 @@ public class SlideshowFragment extends Fragment {
         SharedPreferences sharedPreferences = getActivity().getSharedPreferences("AppPreferences", Context.MODE_PRIVATE);
         return sharedPreferences.getString("BlacklistCid", "defaultCid");
     }
+
+    public void saveFileContent(String fileContent) {
+        // 获取SharedPreferences对象
+        SharedPreferences sharedPreferences = getContext().getSharedPreferences("AppPrefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        // 将文件内容保存为字符串
+        editor.putString("FileContent", fileContent);
+        // 提交更改
+        editor.apply();
+    }
+
+    public String loadFileContent() {
+        // 获取SharedPreferences对象
+        SharedPreferences sharedPreferences = getContext().getSharedPreferences("AppPrefs", Context.MODE_PRIVATE);
+        // 从SharedPreferences获取文件内容
+        return sharedPreferences.getString("FileContent", "DefaultContent");
+    }
+
 
     private String fetchBlacklistFromIPFS() throws IOException {
         // 替换成实际的IPFS CID获取URL
