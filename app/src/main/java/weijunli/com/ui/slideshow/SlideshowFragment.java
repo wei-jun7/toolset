@@ -139,7 +139,7 @@ public class SlideshowFragment extends Fragment {
 
                 // 延时再次执行HTTP GET请求，这里可以调整为更合理的时间，如立即执行或者根据业务需要延迟
                 try {
-                    Thread.sleep(20000); // 可以根据需要调整这个延时
+                    Thread.sleep(30000); // 可以根据需要调整这个延时
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     return;
@@ -765,7 +765,17 @@ public class SlideshowFragment extends Fragment {
     private void executeHttpPost() {
         OkHttpClient client = new OkHttpClient();
         String urlPost = "http://192.168.1.251:5000/api/start_transaction";
-        String json = "{\"message\":\"hello\"}";
+        String json = null;
+        try {
+            String inputFromUser = message.getText().toString();
+            json = String.format("{\"message\":\"%s\"}", inputFromUser);
+            // 在这里可以使用 json 字符串，比如打印输出或者发送到服务器
+            System.out.println(json);
+        } catch (NullPointerException e) {
+            // 处理 message 或 getText() 返回 null 的情况
+            System.out.println("TextView 'message' 是 null 或未包含任何文本");
+        }
+        
         RequestBody body = RequestBody.create(json, MediaType.get("application/json; charset=utf-8"));
         Request request = new Request.Builder()
                 .url(urlPost)
