@@ -116,6 +116,8 @@ public class SlideshowFragment extends Fragment {
             }
         });
         binding.button6.setOnClickListener(view -> {
+            binding.button6.setEnabled(false);
+
             // 使用后台线程来处理网络请求
             Executors.newSingleThreadExecutor().submit(() -> {
                 try {
@@ -144,6 +146,7 @@ public class SlideshowFragment extends Fragment {
                 }
 
                 executeHttpGet();
+                getActivity().runOnUiThread(() -> binding.button6.setEnabled(true));
             });
         });
 
