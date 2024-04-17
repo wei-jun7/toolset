@@ -34,8 +34,6 @@ import org.web3j.tx.gas.StaticGasProvider;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -51,20 +49,19 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
 import okhttp3.MultipartBody;
-
+import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import weijunli.com.R;
 import weijunli.com.databinding.FragmentSlideshowBinding;
-import weijunli.com.solcontract.weijunli.com.solcontract.SpamDectetor_sol_AIContract;
 import weijunli.com.solcontract.weijunli.com.solcontract.Blacklist_sol_EmailBlacklistVoting;
+import weijunli.com.solcontract.weijunli.com.solcontract.SpamDectetor_sol_AIContract;
 
 
 public class SlideshowFragment extends Fragment {
-
+    public static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     private FragmentSlideshowBinding binding;
     private SlideshowViewModel viewModel;
     private TextView Final_result;
@@ -80,10 +77,11 @@ public class SlideshowFragment extends Fragment {
     private String[] whitelist;
     private String[] blacklist;
     private Web3j web3;
-    private static final String PRIVATE_KEY = "2fef86803ccff8a535c98b5540239d48eade281bcbdff051b8f6d6dd16226a6c";
+    private static final  String PRIVATE_KEY_LIN="b86b4e07800868d04de104582677760fcbffe8461e6481968c3b60ef802620a1";
+    private static final String PRIVATE_KEY_WJL = "2fef86803ccff8a535c98b5540239d48eade281bcbdff051b8f6d6dd16226a6c";
     private static final String PRIVATE_KEY_BL = "393bd1213bc36f917e9619f4cd4d7b3c39e97e4c0bdb9cfc21115007b8587b78";
     private static final String BLACKLIST_ADDRESS = "0x4cAd379DC50dA5Ea71b99DfEa925A8564852ef2E";
-    private static final String CONTRACT_ADDRESS = "0xde4f7367f524c1bB6dc41BC740cc470e3900E121";
+    private static final String CONTRACT_ADDRESS = "0x105b1D2dBb00E2b9C9CDfAD8510c09F3Ca091570";
     private static final BigInteger GAS_PRICE = BigInteger.valueOf(20_000_000_000L);
     private static final BigInteger GAS_LIMIT = BigInteger.valueOf(4_300_000);
     private File filesDir;
@@ -121,51 +119,137 @@ public class SlideshowFragment extends Fragment {
             // 使用后台线程来处理网络请求
             Executors.newSingleThreadExecutor().submit(() -> {
                 try {
-                    Log.d("Web3", "Starting Web3 interaction");
-                    Web3j web3 = Web3j.build(new HttpService("https://sepolia.infura.io/v3/93c82ee662ce4f11b02edb3a42087f4a"));
-                    Credentials credentials = Credentials.create(PRIVATE_KEY);
-                    // 获取nonce
-                    EthGetTransactionCount ethGetTransactionCount = web3.ethGetTransactionCount(
-                            credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
-                    BigInteger nonce = ethGetTransactionCount.getTransactionCount();
-                    Log.d("Web3", "Current nonce: " + nonce);
-
-                    ContractGasProvider gasProvider = new StaticGasProvider(GAS_PRICE, GAS_LIMIT);
-                    SpamDectetor_sol_AIContract contract = SpamDectetor_sol_AIContract.load(CONTRACT_ADDRESS, web3, credentials, gasProvider);
-
-                    // 发送数据到智能合约
-                    Log.d("Web3", "sending hello to contract");
-                    TransactionReceipt transactionReceipt = contract.setInputData("hello").send();
-                    Log.d("Web3", "sented hello to contract");
-                    String transactionHash = transactionReceipt.getTransactionHash();
-                    // 回到主线程更新UI
-                    getActivity().runOnUiThread(() -> {
-                        updateUI(transactionHash, "input data 1 hello");
-                    });
-                    EthGetTransactionCount ethGetTransactionCount1 = web3.ethGetTransactionCount(
-                            credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
-                    BigInteger nonce1 = ethGetTransactionCount.getTransactionCount();
-                    Log.d("Web3", "Current nonce: " + nonce1);
-
-
-                    // 获取智能合约中的数据
-                    Log.d("Web3", "retrieving data from contract");
-                    String input_data = contract.getgetInputData().encodeFunctionCall();
-                    Log.d("Web3", "retrieved data from contract: " + input_data);
-                    EthGetTransactionCount ethGetTransactionCount2 = web3.ethGetTransactionCount(
-                            credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
-                    BigInteger nonce2 = ethGetTransactionCount.getTransactionCount();
-                    Log.d("Web3", "Current nonce: " + nonce2);
-                    // 回到主线程更新UI
-                    getActivity().runOnUiThread(() -> {
-                        updateUI(transactionHash, "input data 2: " + input_data);
-                    });
+                    performWeb3Interaction();
                 } catch (Exception e) {
                     Log.e("Web3", "Error during Web3 interaction", e);
-                    getActivity().runOnUiThread(() -> showErrorDialog());
+                    getActivity().runOnUiThread(this::showErrorDialog);
                 }
+
+                // 延时30秒后执行HTTP POST请求
+                try {
+                    Thread.sleep(10000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+
+                executeHttpPost();
+
+                // 延时再次执行HTTP GET请求，这里可以调整为更合理的时间，如立即执行或者根据业务需要延迟
+                try {
+                    Thread.sleep(20000); // 可以根据需要调整这个延时
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+
+                executeHttpGet();
             });
         });
+//        binding.button6.setOnClickListener(view -> {
+//            // 使用后台线程来处理网络请求
+//            Executors.newSingleThreadExecutor().submit(() -> {
+//                try{
+//                    Log.d("Web3", "Starting Web3 interaction");
+//                    Web3j web3 = Web3j.build(new HttpService("https://sepolia.infura.io/v3/93c82ee662ce4f11b02edb3a42087f4a"));
+//                    Credentials credentials = Credentials.create(PRIVATE_KEY_WJL);
+//                    // 获取nonce
+//                    EthGetTransactionCount ethGetTransactionCount = web3.ethGetTransactionCount(
+//                            credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
+//                    BigInteger nonce = ethGetTransactionCount.getTransactionCount();
+//                    Log.d("Web3", "Current nonce: " + nonce);
+//
+//                    ContractGasProvider gasProvider = new StaticGasProvider(GAS_PRICE, GAS_LIMIT);
+//                    SpamDectetor_sol_AIContract contract = SpamDectetor_sol_AIContract.load(CONTRACT_ADDRESS, web3, credentials, gasProvider);
+//
+//                    // 发送数据到智能合约
+//                    Log.d("Web3", "sending hello to contract");
+//                    TransactionReceipt transactionReceipt = contract.setInputData("hello").send();
+//                    Log.d("Web3", "sented hello to contract");
+//                    String transactionHash = transactionReceipt.getTransactionHash();
+//                    // 回到主线程更新UI
+//                    getActivity().runOnUiThread(() -> {
+//                        updateUI(transactionHash, "inputdata 1 is  hello");
+//                    });
+//                    Log.d("Web3", "retrieving data from contract");
+//                    String output_data = contract.getOutputData().encodeFunctionCall();
+//                    Log.d("Web3", "retrieved data from contract: " + output_data);
+//                    EthGetTransactionCount ethGetTransactionCount2 = web3.ethGetTransactionCount(
+//                            credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
+//                    BigInteger nonce2 = ethGetTransactionCount.getTransactionCount();
+//                    Log.d("Web3", "Current nonce: " + nonce2);
+//                    // 回到主线程更新UI
+//                    getActivity().runOnUiThread(() -> {
+//                        updateUI(transactionHash, "output data 2: " + output_data);
+//                    });
+//                }
+//                catch (Exception e) {
+//                    Log.e("Web3", "Error during Web3 interaction", e);
+//                    getActivity().runOnUiThread(() -> showErrorDialog());
+//                }
+//
+//
+//
+//                OkHttpClient client = new OkHttpClient();
+//                Log.d("https ","success build ");
+//                String urlPost = "http://192.168.1.251:5000/api/start_transaction";  // 确保URL是正确的
+//
+//                String json = "{\"message\":\"hello\"}";
+//                RequestBody body = RequestBody.create(json, MediaType.get("application/json; charset=utf-8"));
+//
+//                Request request = new Request.Builder()
+//                        .url(urlPost)
+//                        .post(body)
+//                        .build();
+//
+//                try (Response response = client.newCall(request).execute()) {
+//                    if (response.isSuccessful()) {
+//                        String responseBody = response.body().string();
+//                        Log.d("https", "Connection success.");
+//                        getActivity().runOnUiThread(() -> {
+//                            updateUI("Response body: ", responseBody);
+//                        });
+//                    } else {
+//                        String responseBody = response.body().string();
+//                        Log.d("https", "Connection failed.");
+//                        getActivity().runOnUiThread(() -> {
+//                            updateUI("Response body: ", responseBody);
+//                        });
+//                    }
+//                } catch (Exception e) {
+//                    Log.e("https", "Error during HTTP interaction", e);
+//                    getActivity().runOnUiThread(() -> showErrorDialog());
+//                }
+//            });
+//            try {
+//                Thread.sleep(30000);
+//            } catch (InterruptedException e) {
+//                throw new RuntimeException(e);
+//            }
+//            OkHttpClient client1 = new OkHttpClient();
+//            String urlGet = "http://192.168.1.251:5000/api/output";
+//            Request request1 = new Request.Builder()
+//                    .url(urlGet)
+//                    .build();
+//            try (Response response = client1.newCall(request1).execute()) {
+//                if (response.isSuccessful()) {
+//                    String responseBody = response.body().string();
+//                    Log.d("https", "GET connection success.");
+//                    getActivity().runOnUiThread(() -> {
+//                        updateUI("GET Response body: ", responseBody);
+//                    });
+//                } else {
+//                    String responseBody = response.body().string();
+//                    Log.d("https", "GET connection failed.");
+//                    getActivity().runOnUiThread(() -> {
+//                        updateUI("GET Response body: ", responseBody);
+//                    });
+//                }
+//            } catch (Exception e) {
+//                Log.e("https", "Error during GET HTTP interaction", e);
+//                getActivity().runOnUiThread(() -> showErrorDialog());
+//            }
+//        });
 
 
 
@@ -486,7 +570,24 @@ public class SlideshowFragment extends Fragment {
         // 从SharedPreferences获取文件内容
         return sharedPreferences.getString("FileContent", "DefaultContent");
     }
-
+    String get(OkHttpClient client,String url) throws Exception {
+        Request request = new Request.Builder()
+                .url(url)
+                .build();
+        try (Response response = client.newCall(request).execute()) {
+            return response.body().string();
+        }
+    }
+    String post(OkHttpClient client,String url, String json) throws Exception {
+        RequestBody body = RequestBody.create(json, JSON);
+        Request request = new Request.Builder()
+                .url(url)
+                .post(body)
+                .build();
+        try (Response response = client.newCall(request).execute()) {
+            return response.body().string();
+        }
+    }
 
     private String fetchBlacklistFromIPFS() throws IOException {
         // 替换成实际的IPFS CID获取URL
@@ -719,5 +820,88 @@ public class SlideshowFragment extends Fragment {
             blacklist[i] = "user" + (i + 1) + "@example.com";
         }
     }
+    private void performWeb3Interaction() {
+        try{
+            Log.d("Web3", "Starting Web3 interaction");
+            Web3j web3 = Web3j.build(new HttpService("https://sepolia.infura.io/v3/93c82ee662ce4f11b02edb3a42087f4a"));
+            Credentials credentials = Credentials.create(PRIVATE_KEY_WJL);
+            // 获取nonce
+            EthGetTransactionCount ethGetTransactionCount = web3.ethGetTransactionCount(
+                    credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
+            BigInteger nonce = ethGetTransactionCount.getTransactionCount();
+            Log.d("Web3", "Current nonce: " + nonce);
 
+            ContractGasProvider gasProvider = new StaticGasProvider(GAS_PRICE, GAS_LIMIT);
+            SpamDectetor_sol_AIContract contract = SpamDectetor_sol_AIContract.load(CONTRACT_ADDRESS, web3, credentials, gasProvider);
+
+            // 发送数据到智能合约
+            Log.d("Web3", "sending hello to contract");
+            TransactionReceipt transactionReceipt = contract.setInputData("hello").send();
+            Log.d("Web3", "sented hello to contract");
+            String transactionHash = transactionReceipt.getTransactionHash();
+            // 回到主线程更新UI
+            getActivity().runOnUiThread(() -> {
+                updateUI(transactionHash, "inputdata 1 is  hello");
+            });
+            Log.d("Web3", "retrieving data from contract");
+            String output_data = contract.getOutputData().encodeFunctionCall();
+            Log.d("Web3", "retrieved data from contract: " + output_data);
+            EthGetTransactionCount ethGetTransactionCount2 = web3.ethGetTransactionCount(
+                    credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
+            BigInteger nonce2 = ethGetTransactionCount.getTransactionCount();
+            Log.d("Web3", "Current nonce: " + nonce2);
+            // 回到主线程更新UI
+            getActivity().runOnUiThread(() -> {
+                updateUI(transactionHash, "output data 2: " + output_data);
+            });
+        }
+        catch (Exception e) {
+            Log.e("Web3", "Error during Web3 interaction", e);
+            getActivity().runOnUiThread(() -> showErrorDialog());
+        }
+
+    }
+
+    private void executeHttpPost() {
+        OkHttpClient client = new OkHttpClient();
+        String urlPost = "http://192.168.1.251:5000/api/start_transaction";
+        String json = "{\"message\":\"hello\"}";
+        RequestBody body = RequestBody.create(json, MediaType.get("application/json; charset=utf-8"));
+        Request request = new Request.Builder()
+                .url(urlPost)
+                .post(body)
+                .build();
+        try (Response response = client.newCall(request).execute()) {
+            if (response.isSuccessful()) {
+                String responseBody = response.body().string();
+                getActivity().runOnUiThread(() -> updateUI("Response body: ", responseBody));
+            } else {
+                String responseBody = response.body().string();
+                getActivity().runOnUiThread(() -> updateUI("Failed to connect: ", responseBody));
+            }
+        } catch (Exception e) {
+            Log.e("https", "Error during HTTP interaction", e);
+            getActivity().runOnUiThread(this::showErrorDialog);
+        }
+    }
+
+    private void executeHttpGet() {
+        OkHttpClient client = new OkHttpClient();
+        String urlGet = "http://192.168.1.251:5000/api/output";
+        Request request = new Request.Builder()
+                .url(urlGet)
+                .build();
+        try (Response response = client.newCall(request).execute()) {
+            if (response.isSuccessful()) {
+                String responseBody = response.body().string();
+                getActivity().runOnUiThread(() -> updateUI("GET Response body: ", responseBody));
+            } else {
+                String responseBody = response.body().string();
+                getActivity().runOnUiThread(() -> updateUI("GET Failed to connect: ", responseBody));
+            }
+        } catch (Exception e) {
+            Log.e("https", "Error during GET HTTP interaction", e);
+            getActivity().runOnUiThread(this::showErrorDialog);
+        }
+    }
 }
