@@ -58,6 +58,7 @@ import weijunli.com.R;
 import weijunli.com.databinding.FragmentSlideshowBinding;
 import weijunli.com.solcontract.weijunli.com.solcontract.Blacklist_sol_EmailBlacklistVoting;
 import weijunli.com.solcontract.weijunli.com.solcontract.SpamDectetor_sol_AIContract;
+import weijunli.com.solcontract.weijunli.com.solcontract.TransferToken2_sol_transferToken;
 
 
 public class SlideshowFragment extends Fragment {
@@ -80,8 +81,10 @@ public class SlideshowFragment extends Fragment {
     private static final  String PRIVATE_KEY_LIN="b86b4e07800868d04de104582677760fcbffe8461e6481968c3b60ef802620a1";
     private static final String PRIVATE_KEY_WJL = "2fef86803ccff8a535c98b5540239d48eade281bcbdff051b8f6d6dd16226a6c";
     private static final String PRIVATE_KEY_BL = "393bd1213bc36f917e9619f4cd4d7b3c39e97e4c0bdb9cfc21115007b8587b78";
+    private static final String PRIVATE_KEY_TS = "a4cbaa3c72aa4a01701abd3ee9b6debd5f80447328fe460849c011694ace194c";
     private static final String BLACKLIST_ADDRESS = "0x4cAd379DC50dA5Ea71b99DfEa925A8564852ef2E";
     private static final String CONTRACT_ADDRESS = "0x105b1D2dBb00E2b9C9CDfAD8510c09F3Ca091570";
+    private static final String CONTRACT_ADDRESS2 = "0xbfd09975bc27ce91138141789c632d2164007a5d";
     private static final BigInteger GAS_PRICE = BigInteger.valueOf(20_000_000_000L);
     private static final BigInteger GAS_LIMIT = BigInteger.valueOf(4_300_000);
     private File filesDir;
@@ -116,6 +119,7 @@ public class SlideshowFragment extends Fragment {
             }
         });
         binding.button6.setOnClickListener(view -> {
+
             binding.button6.setEnabled(false);
 
             // 使用后台线程来处理网络请求
@@ -139,7 +143,7 @@ public class SlideshowFragment extends Fragment {
 
                 // 延时再次执行HTTP GET请求，这里可以调整为更合理的时间，如立即执行或者根据业务需要延迟
                 try {
-                    Thread.sleep(30000); // 可以根据需要调整这个延时
+                    Thread.sleep(20000); // 可以根据需要调整这个延时
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     return;
@@ -380,6 +384,9 @@ public class SlideshowFragment extends Fragment {
                     showErrorMessage("please login ");
 
                 } else if (message.getText().length() > 0 && login_state) {
+                    String emailAddress = sourceinfo.getText().toString();
+                    sendMessageToContract(emailAddress);
+
                     StringBuilder extractedInfo = new StringBuilder("Extracted Info:");
                     String cleanMessage = message.getText().toString();
 
@@ -439,8 +446,154 @@ public class SlideshowFragment extends Fragment {
             }
         });
 
+        binding.reward.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (!login_state) {
+                    showErrorMessage("please login ");
 
+                } else {
+                    String emailAddress = sourceinfo.getText().toString();
+                    String accountAddress = message.getText().toString();
+                    addVoterToContract(accountAddress, emailAddress);
+                    //sendMessageToContract(HARD_CODED_EMAIL);
+                }
+            }
+        });
+
+        binding.sendmoney.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (!login_state) {
+                    showErrorMessage("please login ");
+
+                } else {
+                    String emailAddress = sourceinfo.getText().toString();
+                    shareEtherWithVoters(emailAddress);
+                }
+            }
+        });
+        binding.button7.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // Assume getEmailInput() is a method that gets the user's input email
+                String emailAddress = sourceinfo.getText().toString();
+                sendMessageToContract(emailAddress);
+
+                String emailToVote = "user1@example.com";
+                // Execute network request in a new thread
+                new Thread(() -> {
+                    try {
+                        String newIpfsHash = voteToWhite(emailToVote);
+                        // Optionally, save the new CID to SharedPreferences
+                    } catch (Exception e) {
+                        getActivity().runOnUiThread(() -> {
+                            // Display the error in a dialog
+                            new AlertDialog.Builder(getActivity())
+                                    .setTitle("Error")
+                                    .setMessage("Error processing vote: " + e.getMessage())
+                                    .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
+                                    .show();
+                        });
+                    }
+                }).start();
+            }
+        });
         return root;
+    }
+    private void sendMessageToContract(String email) {
+        Executors.newSingleThreadExecutor().submit(() -> {
+            try {
+                Web3j web3 = Web3j.build(new HttpService("https://sepolia.infura.io/v3/692e5b6388004a65b334d8fae8ff5b51"));
+                Credentials credentials = Credentials.create(PRIVATE_KEY_WJL);
+                EthGetTransactionCount ethGetTransactionCount = web3.ethGetTransactionCount(
+                        credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
+                BigInteger nonce = ethGetTransactionCount.getTransactionCount();
+
+                ContractGasProvider gasProvider = new StaticGasProvider(GAS_PRICE, GAS_LIMIT);
+                TransferToken2_sol_transferToken contract = TransferToken2_sol_transferToken.load(CONTRACT_ADDRESS2, web3, credentials, gasProvider);
+
+                // Define the amount of Ether to send, adjust according to your function's requirements
+                BigInteger amountToSend = BigInteger.valueOf(1_000_000_000_000_000L); // For example, 0.001 Ether
+
+                // Calling the sendMessage function on the smart contract, passing Ether value
+                TransactionReceipt transactionReceipt = contract.sendMessage(email, amountToSend).send();
+
+                getActivity().runOnUiThread(() -> {
+                    //Toast.makeText(getActivity(), "Message sent with transaction: " + transactionReceipt.getTransactionHash(), Toast.LENGTH_LONG).show();
+                    Final_result.setText("Message sent with transaction: " + transactionReceipt.getTransactionHash());
+                });
+            } catch (Exception e) {
+                Log.e("Web3Error", "Error interacting with smart contract", e);
+                getActivity().runOnUiThread(() -> {
+                    //Toast.makeText(getActivity(), "Failed to send message: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    Final_result.setText("Failed to send message: " + e.getMessage());
+
+                });
+            }
+        });
+    }
+
+    private void addVoterToContract(String voterAddress, String email) {
+        Executors.newSingleThreadExecutor().submit(() -> {
+            try {
+                Web3j web3 = Web3j.build(new HttpService("https://sepolia.infura.io/v3/692e5b6388004a65b334d8fae8ff5b51"));
+                Credentials credentials = Credentials.create(PRIVATE_KEY_WJL);
+                EthGetTransactionCount ethGetTransactionCount = web3.ethGetTransactionCount(
+                        credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
+                BigInteger nonce = ethGetTransactionCount.getTransactionCount();
+
+                ContractGasProvider gasProvider = new StaticGasProvider(GAS_PRICE, GAS_LIMIT);
+                TransferToken2_sol_transferToken contract = TransferToken2_sol_transferToken.load(CONTRACT_ADDRESS2, web3, credentials, gasProvider);
+
+                // Calling the addVoter function on the smart contract
+                TransactionReceipt transactionReceipt = contract.addVoter(voterAddress, email).send();
+
+                getActivity().runOnUiThread(() -> {
+                    //Toast.makeText(getActivity(), "Voter added successfully: " + transactionReceipt.getTransactionHash(), Toast.LENGTH_LONG).show();
+                    Final_result.setText("Add Voter: " + transactionReceipt.getTransactionHash());
+
+                });
+            } catch (Exception e) {
+                Log.e("Web3Error", "Error interacting with smart contract", e);
+                getActivity().runOnUiThread(() -> {
+                    //Toast.makeText(getActivity(), "Failed to add voter: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    Final_result.setText("Failed to send message: " + e.getMessage());
+
+                });
+            }
+        });
+    }
+
+    private void shareEtherWithVoters(String email) {
+        Executors.newSingleThreadExecutor().submit(() -> {
+            try {
+                Web3j web3 = Web3j.build(new HttpService("https://sepolia.infura.io/v3/692e5b6388004a65b334d8fae8ff5b51"));
+                Credentials credentials = Credentials.create(PRIVATE_KEY_WJL);
+                EthGetTransactionCount ethGetTransactionCount = web3.ethGetTransactionCount(
+                        credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
+                BigInteger nonce = ethGetTransactionCount.getTransactionCount();
+
+                ContractGasProvider gasProvider = new StaticGasProvider(GAS_PRICE, GAS_LIMIT);
+                TransferToken2_sol_transferToken contract = TransferToken2_sol_transferToken.load(CONTRACT_ADDRESS2, web3, credentials, gasProvider);
+
+                // Calling the shareEther function on the smart contract
+                TransactionReceipt transactionReceipt = contract.shareEther(email).send();
+
+                getActivity().runOnUiThread(() -> {
+                    //Toast.makeText(getActivity(), "Ether shared successfully: " + transactionReceipt.getTransactionHash(), Toast.LENGTH_LONG).show();
+                    Final_result.setText("Share Ether: " + transactionReceipt.getTransactionHash());
+
+                });
+            } catch (Exception e) {
+                Log.e("Web3Error", "Error interacting with smart contract", e);
+                getActivity().runOnUiThread(() -> {
+                    //Toast.makeText(getActivity(), "Failed to share Ether: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    Final_result.setText("Failed to send message: " + e.getMessage());
+
+                });
+            }
+        });
     }
     public void saveCid(String cid) {
         SharedPreferences sharedPreferences = getActivity().getSharedPreferences("AppPreferences", Context.MODE_PRIVATE);
@@ -736,15 +889,16 @@ public class SlideshowFragment extends Fragment {
 
             // 发送数据到智能合约
             Log.d("Web3", "sending hello to contract");
-            TransactionReceipt transactionReceipt = contract.setInputData("hello").send();
+            String user_input= message.getText().toString();
+            TransactionReceipt transactionReceipt = contract.setInputData(user_input).send();
             Log.d("Web3", "sented hello to contract");
             String transactionHash = transactionReceipt.getTransactionHash();
             // 回到主线程更新UI
             getActivity().runOnUiThread(() -> {
-                updateUI(transactionHash, "inputdata 1 is  hello");
+                updateUI(transactionHash, "inputdata 1 is"+user_input);
             });
             Log.d("Web3", "retrieving data from contract");
-            String output_data = contract.getOutputData().encodeFunctionCall();
+            String output_data = contract.getInputData().encodeFunctionCall();
             Log.d("Web3", "retrieved data from contract: " + output_data);
             EthGetTransactionCount ethGetTransactionCount2 = web3.ethGetTransactionCount(
                     credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
@@ -764,11 +918,11 @@ public class SlideshowFragment extends Fragment {
 
     private void executeHttpPost() {
         OkHttpClient client = new OkHttpClient();
-        String urlPost = "http://192.168.1.251:5000/api/start_transaction";
+        String urlPost = "http://129.161.87.114:5000/api/start_transaction";
         String json = null;
         try {
-            String inputFromUser = message.getText().toString();
-            json = String.format("{\"message\":\"%s\"}", inputFromUser);
+//            String inputFromUser = message.getText().toString();
+            json = String.format("{\"message\":\"%s\"}", "hello server");
             // 在这里可以使用 json 字符串，比如打印输出或者发送到服务器
             System.out.println(json);
         } catch (NullPointerException e) {
@@ -797,7 +951,7 @@ public class SlideshowFragment extends Fragment {
 
     private void executeHttpGet() {
         OkHttpClient client = new OkHttpClient();
-        String urlGet = "http://192.168.1.251:5000/api/output";
+        String urlGet = "http://129.161.87.114:5000/api/output";
         Request request = new Request.Builder()
                 .url(urlGet)
                 .build();
@@ -813,5 +967,125 @@ public class SlideshowFragment extends Fragment {
             Log.e("https", "Error during GET HTTP interaction", e);
             getActivity().runOnUiThread(this::showErrorDialog);
         }
+    }
+    private String voteToWhite(String emailToAdd) throws IOException, JSONException{
+        OkHttpClient client = new OkHttpClient();
+        MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
+
+        // Read the existing blacklist JSON
+                /*AssetManager assetManager = getActivity().getAssets();
+                InputStream inputStream = assetManager.open("blacklist.json");
+                String jsonContent = convertStreamToString(inputStream);
+                inputStream.close();*/
+        String cid = getCid();
+        if (cid.equals("defaultCid")) {
+            cid = "QmSYtZ1L9fKogrAyMD9oGrx6edxuoZTEUkahcsEd3iB9Kj";
+        }
+        String ipfsUrl = "https://ipfs.io/ipfs/" + cid;
+        Request fetchRequest = new Request.Builder().url(ipfsUrl).build();
+        Response fetchResponse = client.newCall(fetchRequest).execute();
+
+        if (!fetchResponse.isSuccessful()) {
+            throw new IOException("Failed to fetch existing blacklist from IPFS.");
+        }
+        String jsonContent = fetchResponse.body().string();
+        JSONArray blacklist = new JSONArray(jsonContent);
+        boolean emailExists = false;
+        for (int i = 0; i < blacklist.length(); i++) {
+            JSONObject entry = blacklist.getJSONObject(i);
+            if (entry.getString("email").equals(emailToAdd)) {
+                JSONObject votes = entry.getJSONObject("votes");
+                int currentToRemove = votes.getInt("toRemove");
+                int currentToKeep = votes.getInt("toKeep");
+                votes.put("toKeep", votes.getInt("toRemove") + 1);  // Increment the "toKeep" vote count
+                emailExists = true;
+
+                if (currentToRemove >= 3 && currentToRemove > currentToKeep) {
+                    // If conditions are met, remove the entry from the blacklist
+                    blacklist.remove(i);
+                    notifyUser(emailToAdd, true);  // A method to show dialog notification
+                } else {
+                    // Otherwise, just update the count and notify the user
+                    notifyUser(emailToAdd, false, currentToRemove, currentToKeep);  // A method to show dialog notification
+                }
+                emailExists = true;
+                break;
+            }
+
+        }
+
+        if (!emailExists) {
+            // Create a new entry if the email does not exist
+            JSONObject newEntry = new JSONObject();
+            newEntry.put("email", emailToAdd);
+            newEntry.put("reason", "Test entry");
+            newEntry.put("addedBy", "admin");
+            newEntry.put("dateAdded", new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date()));
+            newEntry.put("active", true);
+            newEntry.put("votes", new JSONObject().put("toRemove", 1).put("toKeep", 0));
+            blacklist.put(newEntry);
+        }
+        // Append the new entry to the blacklist
+
+        // Convert the updated blacklist back to a byte array
+        byte[] fileBytes = blacklist.toString().getBytes();
+
+        // Upload the updated blacklist to IPFS
+        RequestBody requestBody = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("file", "blacklist.json",
+                        RequestBody.create(MEDIA_TYPE_JSON, fileBytes))
+                .build();
+
+        Request request = new Request.Builder()
+                .url("https://api.pinata.cloud/pinning/pinFileToIPFS")
+                .header("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJlZTE2ZGFkOC03MmUzLTQ0MTUtYjA5ZC1lYzYxNWZhZTVkN2UiLCJlbWFpbCI6ImppbmdodWF6aHUxQDE2My5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJpZCI6IkZSQTEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX0seyJpZCI6Ik5ZQzEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiZTNlZjIxMjEyNmQyOWY3YWZkNjUiLCJzY29wZWRLZXlTZWNyZXQiOiI1NzBhYTU1OTliMmM2ODQ2MmQ1ODQ5MzQxMTZjZWJmODdmMDE3NWZhN2E1M2NmNTUzZDc3NDUyZjA0MjQ0OGNhIiwiaWF0IjoxNzEzMDY4Njc2fQ.X98QI1EoA0uiMvj8cZxl4SbteqyXwlDTvrSA7O64qCo") // Use your actual JWT
+                .post(requestBody)
+                .build();
+
+        Response response = null;
+        try {
+            response = client.newCall(request).execute();
+            if (!response.isSuccessful()) {
+                throw new IOException("Unexpected code " + response + " with body " + response.body().string());
+            }
+
+            String jsonData = response.body().string();
+            JSONObject jsonObject = new JSONObject(jsonData);
+            String newCid = jsonObject.getString("IpfsHash");
+            saveCid(newCid);
+            return newCid;
+
+        } finally {
+            if (response.body() != null) {
+                response.body().close();
+            }
+        }
+    }
+    private void notifyUser(String email, boolean isRemoved) {
+        String message = isRemoved ?
+                "Email " + email + " has been successfully removed from the blacklist." :
+                "Not enough votes to remove email " + email + ".";
+
+        getActivity().runOnUiThread(() -> {
+            new AlertDialog.Builder(getActivity())
+                    .setTitle("Blacklist Update")
+                    .setMessage(message)
+                    .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
+                    .show();
+        });
+    }
+    private void notifyUser(String email, boolean isRemoved, int toRemoveVotes, int toKeepVotes) {
+        String message = isRemoved ?
+                "Email " + email + " has been successfully removed from the blacklist." :
+                "Current votes for " + email + ":\nTo Remove: " + toRemoveVotes + "\nTo Keep: " + toKeepVotes;
+
+        getActivity().runOnUiThread(() -> {
+            new AlertDialog.Builder(getActivity())
+                    .setTitle("Blacklist Update")
+                    .setMessage(message)
+                    .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
+                    .show();
+        });
     }
 }
