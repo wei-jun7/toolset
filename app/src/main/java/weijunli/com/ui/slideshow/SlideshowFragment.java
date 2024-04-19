@@ -3,7 +3,6 @@ package weijunli.com.ui.slideshow;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
-import android.content.res.AssetManager;
 import android.os.Bundle;
 import android.text.InputType;
 import android.text.method.ScrollingMovementMethod;
@@ -162,7 +161,7 @@ public class SlideshowFragment extends Fragment {
             @Override
             public void onClick(View view) {
                 // 示例：获取用户输入的电子邮件地址
-                String email = "ipfsexample@example.com"; // getEmailInput();这应该是一个函数，从用户输入获取电子邮件地址
+                String email = sourceinfo.getText().toString(); // getEmailInput();这应该是一个函数，从用户输入获取电子邮件地址
 
                 final String[] ipfsHash = new String[1];
                 // 在后台线程中处理网络请求，避免阻塞UI线程
@@ -192,61 +191,7 @@ public class SlideshowFragment extends Fragment {
                 }).start();
             }
 
-            private String uploadToIPFS(String emailToAdd) throws IOException, JSONException {
-                OkHttpClient client = new OkHttpClient();
-                MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
 
-                // Read the existing blacklist JSON
-                AssetManager assetManager = getActivity().getAssets();
-                InputStream inputStream = assetManager.open("blacklist.json");
-                String jsonContent = convertStreamToString(inputStream);
-                inputStream.close();
-                JSONArray blacklist = new JSONArray(jsonContent);
-
-                // Create a new entry to add to the blacklist
-                JSONObject newEntry = new JSONObject();
-                newEntry.put("email", emailToAdd);
-                newEntry.put("reason", "Test entry");
-                newEntry.put("addedBy", "admin");
-                newEntry.put("dateAdded", new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date()));
-                newEntry.put("active", true);
-                newEntry.put("votes", new JSONObject().put("toRemove", 0).put("toKeep", 0));
-
-                // Append the new entry to the blacklist
-                blacklist.put(newEntry);
-
-                // Convert the updated blacklist back to a byte array
-                byte[] fileBytes = blacklist.toString().getBytes();
-
-                // Upload the updated blacklist to IPFS
-                RequestBody requestBody = new MultipartBody.Builder()
-                        .setType(MultipartBody.FORM)
-                        .addFormDataPart("file", "blacklist.json",
-                                RequestBody.create(MEDIA_TYPE_JSON, fileBytes))
-                        .build();
-
-                Request request = new Request.Builder()
-                        .url("https://api.pinata.cloud/pinning/pinFileToIPFS")
-                        .header("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJlZTE2ZGFkOC03MmUzLTQ0MTUtYjA5ZC1lYzYxNWZhZTVkN2UiLCJlbWFpbCI6ImppbmdodWF6aHUxQDE2My5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJpZCI6IkZSQTEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX0seyJpZCI6Ik5ZQzEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiZTNlZjIxMjEyNmQyOWY3YWZkNjUiLCJzY29wZWRLZXlTZWNyZXQiOiI1NzBhYTU1OTliMmM2ODQ2MmQ1ODQ5MzQxMTZjZWJmODdmMDE3NWZhN2E1M2NmNTUzZDc3NDUyZjA0MjQ0OGNhIiwiaWF0IjoxNzEzMDY4Njc2fQ.X98QI1EoA0uiMvj8cZxl4SbteqyXwlDTvrSA7O64qCo") // Use your actual JWT
-                        .post(requestBody)
-                        .build();
-
-                Response response = null;
-                try {
-                    response = client.newCall(request).execute();
-                    if (!response.isSuccessful()) {
-                        throw new IOException("Unexpected code " + response + " with body " + response.body().string());
-                    }
-
-                    String jsonData = response.body().string();
-                    JSONObject jsonObject = new JSONObject(jsonData);
-                    return jsonObject.getString("IpfsHash");
-                } finally {
-                    if (response.body() != null) {
-                        response.body().close();
-                    }
-                }
-            }
 
             private void updateContractWithNewCid(String newCid) {
                 Executors.newSingleThreadExecutor().submit(() -> {
@@ -476,11 +421,12 @@ public class SlideshowFragment extends Fragment {
         binding.button7.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                String emailToVote = sourceinfo.getText().toString();
                 // Assume getEmailInput() is a method that gets the user's input email
                 String emailAddress = sourceinfo.getText().toString();
                 sendMessageToContract(emailAddress);
 
-                String emailToVote = "user1@example.com";
+
                 // Execute network request in a new thread
                 new Thread(() -> {
                     try {
@@ -678,27 +624,93 @@ public class SlideshowFragment extends Fragment {
     private void showToast(String message) {
         Toast.makeText(getActivity(), message, Toast.LENGTH_SHORT).show();
     }
-    private String uploadToIPFS(String data) {
+    private String uploadToIPFS(String emailToAdd) throws IOException, JSONException {
         OkHttpClient client = new OkHttpClient();
-        MediaType MEDIA_TYPE_TEXT = MediaType.parse("text/plain; charset=utf-8");
+        MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
 
-        RequestBody body = RequestBody.create(data, MEDIA_TYPE_TEXT);
-        Request request = new Request.Builder()
-                .url("https://ipfs.infura.io:5001/api/v0/add")
-                .post(body)
+        // Read the existing blacklist JSON
+       /*  AssetManager assetManager = getActivity().getAssets();
+        InputStream inputStream = assetManager.open("blacklist.json");
+        String jsonContent = convertStreamToString(inputStream);
+        inputStream.close();     */
+        String cid = getCid();
+        if (cid.equals("defaultCid")) {
+            cid = "QmSYtZ1L9fKogrAyMD9oGrx6edxuoZTEUkahcsEd3iB9Kj";
+        }
+        String ipfsUrl = "https://ipfs.io/ipfs/" + cid;
+        Request fetchRequest = new Request.Builder().url(ipfsUrl).build();
+        Response fetchResponse = client.newCall(fetchRequest).execute();
+
+        if (!fetchResponse.isSuccessful()) {
+            throw new IOException("Failed to fetch existing blacklist from IPFS.");
+        }
+        String jsonContent = fetchResponse.body().string();
+        JSONArray blacklist = new JSONArray(jsonContent);
+        // Check if the email already exists and update the votes or add a new entry
+        boolean emailExists = false;
+        for (int i = 0; i < blacklist.length(); i++) {
+            JSONObject entry = blacklist.getJSONObject(i);
+            if (entry.getString("email").equals(emailToAdd)) {
+                JSONObject votes = entry.getJSONObject("votes");
+                votes.put("toKeep", votes.getInt("toKeep") + 1);  // Increment the "toKeep" vote count
+                emailExists = true;
+                break;
+            }
+        }
+
+        if (!emailExists) {
+            // Create a new entry if the email does not exist
+            JSONObject newEntry = new JSONObject();
+            newEntry.put("email", emailToAdd);
+            newEntry.put("reason", "Test entry");
+            newEntry.put("addedBy", "admin");
+            newEntry.put("dateAdded", new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date()));
+            newEntry.put("active", true);
+            newEntry.put("votes", new JSONObject().put("toRemove", 0).put("toKeep", 0));
+            blacklist.put(newEntry);
+        }
+        // Append the new entry to the blacklist
+
+        // Convert the updated blacklist back to a byte array
+        byte[] fileBytes = blacklist.toString().getBytes();
+
+        // Upload the updated blacklist to IPFS
+        RequestBody requestBody = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("file", "blacklist.json",
+                        RequestBody.create(MEDIA_TYPE_JSON, fileBytes))
                 .build();
 
+        Request request = new Request.Builder()
+                .url("https://api.pinata.cloud/pinning/pinFileToIPFS")
+                .header("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJlZTE2ZGFkOC03MmUzLTQ0MTUtYjA5ZC1lYzYxNWZhZTVkN2UiLCJlbWFpbCI6ImppbmdodWF6aHUxQDE2My5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJpZCI6IkZSQTEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX0seyJpZCI6Ik5ZQzEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiZTNlZjIxMjEyNmQyOWY3YWZkNjUiLCJzY29wZWRLZXlTZWNyZXQiOiI1NzBhYTU1OTliMmM2ODQ2MmQ1ODQ5MzQxMTZjZWJmODdmMDE3NWZhN2E1M2NmNTUzZDc3NDUyZjA0MjQ0OGNhIiwiaWF0IjoxNzEzMDY4Njc2fQ.X98QI1EoA0uiMvj8cZxl4SbteqyXwlDTvrSA7O64qCo") // Use your actual JWT
+                .post(requestBody)
+                .build();
+
+        Response response = null;
         try {
-            Response response = client.newCall(request).execute();
-            if (response.isSuccessful() && response.body() != null) {
-                String json = response.body().string();
-                JSONObject jsonObject = new JSONObject(json);
-                return jsonObject.getString("Hash");
+            response = client.newCall(request).execute();
+            if (!response.isSuccessful()) {
+                throw new IOException("Unexpected code " + response + " with body " + response.body().string());
             }
-        } catch (IOException | JSONException e) {
-            e.printStackTrace();
+
+            String jsonData = response.body().string();
+            JSONObject jsonObject = new JSONObject(jsonData);
+            String newCid = jsonObject.getString("IpfsHash");
+            saveCid(newCid);
+            return newCid;
+
+        } finally {
+            if (response.body() != null) {
+                response.body().close();
+            }
         }
-        return null;
+
+
+
+
+
+
     }
 
     private void showDialog(String displayText, String title) {
@@ -956,13 +968,45 @@ public class SlideshowFragment extends Fragment {
                 .url(urlGet)
                 .build();
         try (Response response = client.newCall(request).execute()) {
+
             if (response.isSuccessful()) {
-                String responseBody = response.body().string();
+                String responseBody= response.body().string();
                 getActivity().runOnUiThread(() -> updateUI("GET Response body: ", responseBody));
+                if(responseBody.equals("spam")){
+                    String email = sourceinfo.getText().toString(); // getEmailInput();这应该是一个函数，从用户输入获取电子邮件地址
+                    final String[] ipfsHash = new String[1];
+                    // 在后台线程中处理网络请求，避免阻塞UI线程
+                    new Thread(() -> {
+                        try {
+                            ipfsHash[0] = uploadToIPFS(email);
+                            if (ipfsHash[0] != null) {
+                                saveCid(ipfsHash[0]);
+                                getActivity().runOnUiThread(() -> {
+                                    Toast.makeText(getActivity(), "IPFS Hash: " + ipfsHash[0], Toast.LENGTH_LONG).show();
+                                });
+                            } else {
+                                getActivity().runOnUiThread(() -> {
+                                    Toast.makeText(getActivity(), "Failed to upload to IPFS.", Toast.LENGTH_LONG).show();
+                                });
+                            }
+                        } catch (IOException | JSONException e) {
+                            Log.e("UploadError", "Error uploading file", e);
+                            getActivity().runOnUiThread(() -> {
+                                new AlertDialog.Builder(getActivity())
+                                        .setTitle("Error")
+                                        .setMessage("Error uploading file: " + e.toString())
+                                        .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
+                                        .show();
+                            });
+                        }
+                    }).start();
+                }
+
             } else {
                 String responseBody = response.body().string();
                 getActivity().runOnUiThread(() -> updateUI("GET Failed to connect: ", responseBody));
             }
+
         } catch (Exception e) {
             Log.e("https", "Error during GET HTTP interaction", e);
             getActivity().runOnUiThread(this::showErrorDialog);
@@ -995,9 +1039,9 @@ public class SlideshowFragment extends Fragment {
             JSONObject entry = blacklist.getJSONObject(i);
             if (entry.getString("email").equals(emailToAdd)) {
                 JSONObject votes = entry.getJSONObject("votes");
-                int currentToRemove = votes.getInt("toRemove");
+                int currentToRemove = votes.getInt("toRemove")+1;
                 int currentToKeep = votes.getInt("toKeep");
-                votes.put("toKeep", votes.getInt("toRemove") + 1);  // Increment the "toKeep" vote count
+                votes.put("toRemove", votes.getInt("toRemove") + 1);  // Increment the "toKeep" vote count
                 emailExists = true;
 
                 if (currentToRemove >= 3 && currentToRemove > currentToKeep) {
