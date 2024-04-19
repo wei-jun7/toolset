@@ -83,7 +83,7 @@ public class SlideshowFragment extends Fragment {
     private static final String PRIVATE_KEY_TS = "a4cbaa3c72aa4a01701abd3ee9b6debd5f80447328fe460849c011694ace194c";
     private static final String BLACKLIST_ADDRESS = "0x4cAd379DC50dA5Ea71b99DfEa925A8564852ef2E";
     private static final String CONTRACT_ADDRESS = "0x105b1D2dBb00E2b9C9CDfAD8510c09F3Ca091570";
-    private static final String CONTRACT_ADDRESS2 = "0xbfd09975bc27ce91138141789c632d2164007a5d";
+    private static final String CONTRACT_ADDRESS2 = "0x0ef3865c16896dab110fee47f44ee0d692898d00";
     private static final BigInteger GAS_PRICE = BigInteger.valueOf(20_000_000_000L);
     private static final BigInteger GAS_LIMIT = BigInteger.valueOf(4_300_000);
     private File filesDir;
